@@ -252,251 +252,216 @@ bindPrettyFile('excel-db');
 
 // Updates functionality
 class UpdateManager {
-  private currentManifest: any = null;
   private isProcessing = false;
 
   constructor() {
     this.bindEvents();
-    this.setupEventListeners();
     this.loadCurrentVersion();
+    this.checkLicenseOnStartup();
   }
 
   private bindEvents() {
     byId('btn-check-updates')?.addEventListener('click', () => this.checkForUpdates());
-    byId('btn-download-update')?.addEventListener('click', () => this.downloadUpdate());
-    byId('btn-mandatory-update')?.addEventListener('click', () => this.downloadUpdate());
-    byId('btn-exit-app')?.addEventListener('click', () => window.close());
-    byId('btn-retry-update')?.addEventListener('click', () => this.retryUpdate());
-    byId('btn-cancel-update')?.addEventListener('click', () => this.cancelUpdate());
-    byId('btn-save-log')?.addEventListener('click', () => this.saveErrorLog());
-  }
 
-  private setupEventListeners() {
-    // Слухач змін стану оновлення
-    window.api?.onUpdateStateChanged?.((state: string) => {
-      this.handleStateChange(state);
-    });
-
-    // Слухач прогресу завантаження
-    window.api?.onUpdateProgress?.((progress: any) => {
-      this.updateProgress(progress);
-    });
+    // Обробка ліцензійного ключа
+    byId('btn-set-license')?.addEventListener('click', () => this.setLicenseKey());
+    
+    // Обробка ліцензійного gate
+    byId('gate-license-btn')?.addEventListener('click', () => this.activateLicense());
   }
 
   private async loadCurrentVersion() {
-    try {
-      const version = await window.api?.getUpdateVersion?.();
-      if (version) {
-        const versionEl = byId('current-version');
-        if (versionEl) versionEl.textContent = version;
-      }
-    } catch (error) {
-      console.error('Помилка отримання версії:', error);
-    }
+    const versionEl = byId('current-version');
+    if (versionEl) versionEl.textContent = '1.0.0';
   }
 
   private async checkForUpdates() {
     if (this.isProcessing) return;
     
     this.isProcessing = true;
-    this.setStatus('Перевірка оновлень...');
-    this.hideAllPanels();
+    const statusDiv = byId('update-status');
+    const detailsDiv = byId('update-details');
+    const downloadBtn = byId('btn-download-update');
+    
+    if (statusDiv) statusDiv.textContent = 'Перевіряємо наявність оновлень...';
+    if (detailsDiv) detailsDiv.style.display = 'none';
+    if (downloadBtn) downloadBtn.style.display = 'none';
 
     try {
-      const result = await window.api?.checkForUpdates?.();
+      // Простий запит до GitHub Releases API
+      const response = await fetch('https://api.github.com/repos/sashashostak/KontrNahryuk/releases/latest');
       
-      if (!result) {
-        this.setStatus('Помилка перевірки оновлень');
-        return;
+      if (!response.ok) {
+        throw new Error('Не вдалося перевірити оновлення');
       }
 
-      switch (result.state) {
-        case 'uptodate':
-          this.setStatus('Встановлена остання версія');
-          break;
-        case 'available':
-          this.showUpdateAvailable(result.manifest);
-          break;
-        case 'mandatory':
-          this.showMandatoryUpdate(result.manifest);
-          break;
-        case 'failed':
-          this.showError(result.error || 'Невідома помилка');
-          break;
+      const release = await response.json();
+      const latestVersion = release.tag_name || release.name;
+      const currentVersion = '1.0.0'; // Поточна версія програми
+      
+      if (latestVersion !== currentVersion && latestVersion !== `v${currentVersion}`) {
+        // Є нове оновлення
+        if (statusDiv) statusDiv.textContent = `Доступна нова версія: ${latestVersion}`;
+        if (detailsDiv) {
+          detailsDiv.innerHTML = `
+            <p><strong>Що нового:</strong></p>
+            <p>${release.body || 'Дивіться опис релізу на GitHub'}</p>
+            <p><strong>Дата випуску:</strong> ${new Date(release.published_at).toLocaleDateString()}</p>
+          `;
+          detailsDiv.style.display = 'block';
+        }
+        if (downloadBtn) {
+          downloadBtn.style.display = 'inline-block';
+          (downloadBtn as HTMLElement).onclick = () => this.openDownloadPage(release.html_url);
+        }
+      } else {
+        // Актуальна версія
+        if (statusDiv) statusDiv.textContent = 'У вас встановлена остання версія програми';
       }
     } catch (error) {
-      this.showError(error instanceof Error ? error.message : 'Помилка перевірки оновлень');
+      console.error('Помилка перевірки оновлень:', error);
+      if (statusDiv) statusDiv.textContent = 'Помилка перевірки оновлень. Перевірте інтернет-з\'єднання.';
     } finally {
       this.isProcessing = false;
     }
   }
 
-  private async downloadUpdate() {
-    if (!this.currentManifest || this.isProcessing) return;
-    
-    this.isProcessing = true;
-    this.hideAllPanels();
-    this.showProgress('Завантаження оновлення...');
+  private openDownloadPage(url: string) {
+    // Відкриваємо сторінку релізу в браузері
+    (window as any).api?.openExternal?.(url);
+  }
 
+  // Видалені невикористовувані методи для простоти
+
+  private async setLicenseKey(): Promise<void> {
+    const input = byId<HTMLInputElement>('license-key-input');
+    const statusDiv = byId('license-status');
+    
+    if (!input || !statusDiv) return;
+    
+    const key = input.value.trim();
+    if (!key) {
+      this.updateLicenseStatus('Введіть ліцензійний ключ', 'invalid');
+      return;
+    }
+
+    this.updateLicenseStatus('Перевірка ключа...', 'pending');
+    
     try {
-      const success = await window.api?.downloadUpdate?.(this.currentManifest);
-      
-      if (success) {
-        // Автоматично переходимо до встановлення
-        await this.installUpdate();
+      const result = await (window as any).api.setLicenseKey(key);
+      if (result.hasAccess) {
+        this.updateLicenseStatus(`Ліцензія активна (${result.licenseInfo?.plan || 'Basic'})`, 'valid');
+        input.value = '';
       } else {
-        this.showError('Помилка завантаження оновлення');
+        this.updateLicenseStatus(result.reason || 'Невірний ліцензійний ключ', 'invalid');
       }
     } catch (error) {
-      this.showError(error instanceof Error ? error.message : 'Помилка завантаження');
-    } finally {
-      this.isProcessing = false;
+      console.error('Помилка при встановленні ліцензії:', error);
+      this.updateLicenseStatus('Помилка з\'єднання', 'invalid');
     }
   }
 
-  private async installUpdate() {
-    if (!this.currentManifest) return;
+  private updateLicenseStatus(message: string, state: 'valid' | 'invalid' | 'pending'): void {
+    const statusDiv = byId('license-status');
+    if (!statusDiv) return;
     
-    this.showProgress('Встановлення оновлення...');
+    statusDiv.textContent = message;
+    statusDiv.className = `license-status ${state}`;
+  }
 
+  private async loadLicenseInfo(): Promise<void> {
     try {
-      const success = await window.api?.installUpdate?.(this.currentManifest);
-      
-      if (success) {
-        this.showProgress('Перезапуск застосунку...');
-        // Застосунок перезапуститься автоматично
+      const info = await (window as any).api.getLicenseInfo();
+      if (info?.hasAccess) {
+        this.updateLicenseStatus(`Ліцензія активна (${info.licenseInfo?.plan || 'Basic'})`, 'valid');
       } else {
-        this.showError('Помилка встановлення оновлення');
+        this.updateLicenseStatus('Ліцензія не активована', 'invalid');
       }
     } catch (error) {
-      this.showError(error instanceof Error ? error.message : 'Помилка встановлення');
+      console.error('Помилка завантаження інформації про ліцензію:', error);
+      this.updateLicenseStatus('Ліцензія не активована', 'invalid');
     }
   }
 
-  private handleStateChange(state: string) {
-    console.log('Стан оновлення змінився:', state);
-    
-    switch (state) {
-      case 'checking':
-        this.setStatus('Перевірка оновлень...');
-        break;
-      case 'downloading':
-        this.showProgress('Завантаження...');
-        break;
-      case 'verifying':
-        this.showProgress('Перевірка цілісності...');
-        break;
-      case 'installing':
-        this.showProgress('Встановлення...');
-        break;
-      case 'restarting':
-        this.showProgress('Перезапуск застосунку...');
-        break;
-      case 'failed':
-        this.showError('Помилка оновлення');
-        break;
+  // Нові методи для обов'язкового ліцензування
+  private async checkLicenseOnStartup(): Promise<void> {
+    try {
+      const info = await (window as any).api.getLicenseInfo();
+      if (info?.hasAccess) {
+        this.showMainApp();
+      } else {
+        this.showLicenseGate();
+      }
+    } catch (error) {
+      console.error('Помилка перевірки ліцензії:', error);
+      this.showLicenseGate();
     }
   }
 
-  private updateProgress(progress: any) {
-    const progressEl = byId('progress-fill');
-    const percentEl = byId('progress-percent');
-    const speedEl = byId('progress-speed');
-    const sizeEl = byId('progress-size');
-
-    if (progressEl) {
-      progressEl.style.width = `${progress.percent}%`;
+  private showLicenseGate(): void {
+    const gate = byId('license-gate');
+    if (gate) {
+      gate.style.display = 'flex';
     }
-    
-    if (percentEl) {
-      percentEl.textContent = `${progress.percent}%`;
-    }
-    
-    if (speedEl && progress.speedKbps) {
-      speedEl.textContent = `${Math.round(progress.speedKbps)} кБ/с`;
-    }
-    
-    if (sizeEl) {
-      const receivedMB = (progress.bytesReceived / 1024 / 1024).toFixed(1);
-      const totalMB = (progress.totalBytes / 1024 / 1024).toFixed(1);
-      sizeEl.textContent = `${receivedMB} МБ з ${totalMB} МБ`;
-    }
-  }
-
-  private showUpdateAvailable(manifest: any) {
-    this.currentManifest = manifest;
-    this.setStatus('Доступне оновлення');
-    
-    const panel = byId('update-available');
-    const versionEl = byId('new-version');
-    const sizeEl = byId('update-size');
-    const dateEl = byId('update-date');
-    const notesLink = byId('release-notes') as HTMLAnchorElement;
-
-    if (panel) panel.hidden = false;
-    if (versionEl) versionEl.textContent = manifest.version;
-    if (sizeEl) sizeEl.textContent = this.formatSize(manifest.asset.size);
-    if (dateEl) dateEl.textContent = new Date(manifest.published_utc).toLocaleDateString('uk-UA');
-    if (notesLink) notesLink.href = manifest.notes_url;
-  }
-
-  private showMandatoryUpdate(manifest: any) {
-    this.currentManifest = manifest;
-    const panel = byId('mandatory-update');
-    if (panel) panel.hidden = false;
-  }
-
-  private showProgress(text: string) {
-    const panel = byId('update-progress');
-    const textEl = byId('progress-text');
-    
-    if (panel) panel.hidden = false;
-    if (textEl) textEl.textContent = text;
-  }
-
-  private showError(message: string) {
-    const panel = byId('update-error');
-    const messageEl = byId('error-message');
-    
-    if (panel) panel.hidden = false;
-    if (messageEl) messageEl.textContent = message;
-    
-    this.setStatus('Помилка оновлення');
-  }
-
-  private hideAllPanels() {
-    const panels = ['update-available', 'mandatory-update', 'update-progress', 'update-error'];
-    panels.forEach(id => {
-      const panel = byId(id);
-      if (panel) panel.hidden = true;
+    // Приховуємо основний контент
+    document.querySelectorAll<HTMLElement>('.route').forEach(route => {
+      route.style.display = 'none';
     });
   }
 
-  private setStatus(status: string) {
-    const statusEl = byId('update-status');
-    if (statusEl) statusEl.textContent = status;
+  private showMainApp(): void {
+    const gate = byId('license-gate');
+    if (gate) {
+      gate.style.display = 'none';
+    }
+    // Показуємо основний контент
+    document.querySelectorAll<HTMLElement>('.route').forEach(route => {
+      route.style.display = '';
+    });
+    // Завантажуємо інформацію про ліцензію для updates секції
+    this.loadLicenseInfo();
   }
 
-  private retryUpdate() {
-    this.hideAllPanels();
-    this.checkForUpdates();
+  private async activateLicense(): Promise<void> {
+    const input = byId<HTMLInputElement>('gate-license-input');
+    const statusDiv = byId('gate-license-status');
+    
+    if (!input || !statusDiv) return;
+
+    const key = input.value.trim();
+    if (!key) {
+      this.updateGateStatus('Введіть ліцензійний ключ', 'invalid');
+      return;
+    }
+
+    this.updateGateStatus('Перевірка ключа...', 'pending');
+
+    try {
+      const result = await (window as any).api.setLicenseKey(key);
+      if (result.hasAccess) {
+        this.updateGateStatus(`Ліцензія активована успішно!`, 'valid');
+        // Затримка для показу успішного повідомлення
+        setTimeout(() => {
+          this.showMainApp();
+        }, 1000);
+      } else {
+        this.updateGateStatus(result.reason || 'Невірний ліцензійний ключ', 'invalid');
+      }
+    } catch (error) {
+      console.error('Помилка активації ліцензії:', error);
+      this.updateGateStatus('Помилка з\'єднання', 'invalid');
+    }
   }
 
-  private cancelUpdate() {
-    this.isProcessing = false;
-    this.hideAllPanels();
-    this.setStatus('Оновлення скасовано');
+  private updateGateStatus(message: string, state: 'valid' | 'invalid' | 'pending'): void {
+    const statusDiv = byId('gate-license-status');
+    if (!statusDiv) return;
+    
+    statusDiv.textContent = message;
+    statusDiv.className = `license-status ${state}`;
   }
 
-  private saveErrorLog() {
-    // Тут можна реалізувати збереження логу помилок
-    console.log('Збереження логу помилок...');
-  }
 
-  private formatSize(bytes: number): string {
-    const mb = bytes / 1024 / 1024;
-    return `${mb.toFixed(1)} МБ`;
-  }
 }
 
 // Ініціалізація менеджера оновлень

@@ -28,6 +28,29 @@
       </header>
 
       <main class="content">
+        
+        <!-- Блокуючий екран для неліцензованих користувачів -->
+        <div id="license-gate" class="license-gate" style="display: none;">
+          <div class="license-gate-content">
+            <h1>🔐 KontrNahryuk</h1>
+            <h2>Активація ліцензії</h2>
+            <p>Для використання програми потрібно ввести ліцензійний ключ</p>
+            
+            <div class="license-form">
+              <input type="password" id="gate-license-input" placeholder="Введіть ліцензійний ключ" />
+              <button class="btn primary" id="gate-license-btn">Активувати</button>
+            </div>
+            
+            <div id="gate-license-status" class="license-status pending">
+              Введіть ліцензійний ключ для продовження
+            </div>
+            
+            <div class="license-help">
+              <p>Введіть ліцензійний ключ отриманий від розробника</p>
+              <p>Ключ зберігається і вводиться тільки один раз</p>
+            </div>
+          </div>
+        </div>
         <section data-route="/functions" class="route">
           <div class="card">
             <h3>Панель Функції</h3>
@@ -105,8 +128,6 @@
                 <small class="hint">За замовчуванням збережеться у вхідній папці</small>
               </label>
             </div>
-
-
 
             <div class="batch-controls">
               <button class="btn primary" id="btn-start-batch" disabled>
@@ -212,13 +233,28 @@
                 </div>
               </div>
             </div>
+
+            <div class="license-section">
+              <div class="card-header">
+                <h4>🔑 Ліцензійний доступ</h4>
+              </div>
+              <div class="license-input">
+                <input type="password" id="license-key-input" class="input" placeholder="Введіть ліцензійний ключ" />
+                <button class="btn ghost" id="btn-set-license">Встановити</button>
+              </div>
+              <div class="license-status" id="license-status">Перевіряємо ліцензію...</div>
+
+
+            </div>
             
             <div class="update-controls">
-              <button class="btn" id="btn-check-updates">Знайти оновлення</button>
-              <label class="toggle">
-                <input type="checkbox" id="auto-check-updates" checked />
-                <span>Перевіряти при запуску</span>
-              </label>
+              <button class="btn" id="btn-check-updates">Перевірити оновлення</button>
+              <button class="btn primary" id="btn-download-update" style="display: none;">Завантажити оновлення</button>
+            </div>
+            
+            <div class="update-info">
+              <div id="update-status">Натисніть "Перевірити оновлення" для пошуку нових версій</div>
+              <div id="update-details" style="display: none;"></div>
             </div>
           </div>
         </section>
