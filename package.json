@@ -1,7 +1,7 @@
 {
   "name": "KontrNahryuk",
   "version": "1.0.0",
-  "description": "Ukrainian military document processing application with keyword search and structured output generation",
+  "description": "KontrNahryuk - Ukrainian military document processing application with keyword search and structured output generation",
   "author": "sashashostak",
   "main": "dist/electron/main.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "appId": "com.ukraine.documentprocessor",
+    "appId": "com.ukraine.kontrnahryuk",
     "productName": "KontrNahryuk",
     "files": [
       "dist/**/*",

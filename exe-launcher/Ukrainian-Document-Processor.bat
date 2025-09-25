@@ -1,15 +1,15 @@
 @echo off
-title Ukrainian Document Processor
+title KontrNahryuk
 color 0A
 cls
 
 echo.
 echo     ╔══════════════════════════════════════════════════════════╗
-echo     ║              Ukrainian Document Processor v1.0.0        ║
+echo     ║                      KontrNahryuk v1.0.0                ║
 echo     ║                      Starting...                        ║  
 echo     ╚══════════════════════════════════════════════════════════╝
 echo.
-echo  🚀 Starting Ukrainian Document Processor...
+echo  🚀 Starting KontrNahryuk...
 echo     Please wait while the application loads...
 echo.
 
@@ -35,7 +35,7 @@ tasklist /FI "IMAGENAME eq electron.exe" 2>nul | find /I /N "electron.exe">nul
 if errorlevel 1 (
     echo  ⚠️  Electron process not detected, but application may still be starting...
 ) else (
-    echo  ✅ Ukrainian Document Processor started successfully!
+    echo  ✅ KontrNahryuk started successfully!
     echo     The main application window should be visible now.
 )
 
@@ -44,6 +44,6 @@ echo  ℹ️  You can close this launcher window.
 echo     The application will continue running independently.
 echo.
 echo  🔧 To fully close the application, use the application's Exit button
-echo     or close all Ukrainian Document Processor windows.
+echo     or close all KontrNahryuk windows.
 echo.
 timeout /t 2 /nobreak >nul

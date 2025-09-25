@@ -1,7 +1,7 @@
 ЛІЦЕНЗІЙНА УГОДА
-Ukrainian Document Processor
+KontrNahryuk
 
-Copyright (c) 2024-2025 Ukrainian Document Processor
+Copyright (c) 2024-2025 KontrNahryuk
 
 Цей програмний продукт призначений для обробки українських військових документів.
 
