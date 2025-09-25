@@ -110,6 +110,11 @@ function setupUpdateHandlers() {
     return await updateService.checkUpdateAccess()
   })
 
+  // Перевірка оновлень через GitHub API
+  ipcMain.handle('updates:check-github', async () => {
+    return await updateService.checkForUpdatesViaGitHub()
+  })
+
 
 
   // Пересилання подій оновлення до рендера

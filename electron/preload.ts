@@ -37,7 +37,6 @@ interface ElectronAPI {
   setLicenseKey(key: string): Promise<any>
   getLicenseInfo(): Promise<any>
   checkUpdateAccess(): Promise<any>
-  setGitHubToken(token: string): Promise<void>
   onUpdateStateChanged(callback: (state: string) => void): void
   onUpdateProgress(callback: (progress: any) => void): void
   
@@ -67,7 +66,7 @@ contextBridge.exposeInMainWorld('api', {
   listNotes: (): Promise<any[]> => ipcRenderer.invoke('storage:listNotes'),
 
   // Updates API
-  checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updates:check'),
+  checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updates:check-github'),
   downloadUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:download', manifest),
   installUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:install', manifest),
   getUpdateVersion: (): Promise<string> => ipcRenderer.invoke('updates:get-version'),
@@ -76,7 +75,6 @@ contextBridge.exposeInMainWorld('api', {
   setLicenseKey: (key: string): Promise<any> => ipcRenderer.invoke('updates:set-license', key),
   getLicenseInfo: (): Promise<any> => ipcRenderer.invoke('updates:get-license-info'),
   checkUpdateAccess: (): Promise<any> => ipcRenderer.invoke('updates:check-access'),
-  setGitHubToken: (token: string): Promise<void> => ipcRenderer.invoke('updates:set-github-token', token),
   onUpdateStateChanged: (callback: (state: string) => void): void => {
     ipcRenderer.on('updates:state-changed', (_, state) => callback(state))
   },

@@ -85,7 +85,7 @@ class UpdateService extends EventEmitter {
   
   constructor() {
     super()
-    this.currentVersion = app.getVersion()
+    this.currentVersion = '1.1.0'
     
     // Структура папок для оновлень у %LocalAppData%
     const localAppData = process.env.LOCALAPPDATA || process.env.APPDATA || ''
@@ -586,6 +586,55 @@ fwIDAQAB
 
   getDownloadProgress(): UpdateProgress | null {
     return this.downloadProgress
+  }
+
+  // Новий метод для перевірки оновлень через GitHub API
+  async checkForUpdatesViaGitHub(): Promise<any> {
+    try {
+      this.log('Перевірка оновлень через GitHub API...')
+      
+      const response = await fetch('https://api.github.com/repos/sashashostak/KontrNahryuk/releases/latest', {
+        method: 'GET',
+        headers: {
+          'User-Agent': `KontrNahryuk/${this.currentVersion}`,
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        timeout: 10000 // 10 секунд тайм-аут
+      })
+
+      if (!response.ok) {
+        throw new Error(`GitHub API відповів з помилкою: ${response.status} ${response.statusText}`)
+      }
+
+      const release = await response.json()
+      const latestVersion = release.tag_name || release.name || 'unknown'
+      const currentVersion = this.currentVersion
+
+      this.log(`Поточна версія: ${currentVersion}, Остання версія: ${latestVersion}`)
+
+      // Перевіряємо чи є оновлення
+      const hasUpdate = latestVersion !== currentVersion && 
+                       latestVersion !== `v${currentVersion}` &&
+                       latestVersion !== currentVersion.replace(/^v/, '')
+
+      return {
+        hasUpdate,
+        latestVersion,
+        currentVersion,
+        releaseInfo: hasUpdate ? release : null,
+        error: null
+      }
+
+    } catch (error) {
+      this.log(`Помилка перевірки оновлень: ${error instanceof Error ? error.message : String(error)}`)
+      return {
+        hasUpdate: false,
+        latestVersion: null,
+        currentVersion: this.currentVersion,
+        releaseInfo: null,
+        error: error instanceof Error ? error.message : 'Невідома помилка мережі'
+      }
+    }
   }
 }
 

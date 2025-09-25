@@ -272,7 +272,7 @@ class UpdateManager {
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.0.0';
+    if (versionEl) versionEl.textContent = '1.1.0';
   }
 
   private async checkForUpdates() {
@@ -288,31 +288,33 @@ class UpdateManager {
     if (downloadBtn) downloadBtn.style.display = 'none';
 
     try {
-      // Простий запит до GitHub Releases API
-      const response = await fetch('https://api.github.com/repos/sashashostak/KontrNahryuk/releases/latest');
+      // Використовуємо API через electron main процес для обходу CORS
+      const updateInfo = await (window as any).api?.checkForUpdates?.();
       
-      if (!response.ok) {
-        throw new Error('Не вдалося перевірити оновлення');
+      if (!updateInfo) {
+        throw new Error('Не вдалося отримати інформацію про оновлення');
       }
 
-      const release = await response.json();
-      const latestVersion = release.tag_name || release.name;
-      const currentVersion = '1.0.0'; // Поточна версія програми
+      if (updateInfo.error) {
+        throw new Error(updateInfo.error);
+      }
+
+      const { hasUpdate, latestVersion, releaseInfo } = updateInfo;
       
-      if (latestVersion !== currentVersion && latestVersion !== `v${currentVersion}`) {
+      if (hasUpdate && releaseInfo) {
         // Є нове оновлення
         if (statusDiv) statusDiv.textContent = `Доступна нова версія: ${latestVersion}`;
         if (detailsDiv) {
           detailsDiv.innerHTML = `
             <p><strong>Що нового:</strong></p>
-            <p>${release.body || 'Дивіться опис релізу на GitHub'}</p>
-            <p><strong>Дата випуску:</strong> ${new Date(release.published_at).toLocaleDateString()}</p>
+            <p>${releaseInfo.body || 'Дивіться опис релізу на GitHub'}</p>
+            <p><strong>Дата випуску:</strong> ${new Date(releaseInfo.published_at).toLocaleDateString()}</p>
           `;
           detailsDiv.style.display = 'block';
         }
         if (downloadBtn) {
           downloadBtn.style.display = 'inline-block';
-          (downloadBtn as HTMLElement).onclick = () => this.openDownloadPage(release.html_url);
+          (downloadBtn as HTMLElement).onclick = () => this.openDownloadPage(releaseInfo.html_url);
         }
       } else {
         // Актуальна версія
@@ -373,13 +375,31 @@ class UpdateManager {
     try {
       const info = await (window as any).api.getLicenseInfo();
       if (info?.hasAccess) {
-        this.updateLicenseStatus(`Ліцензія активна (${info.licenseInfo?.plan || 'Basic'})`, 'valid');
+        this.updateLicenseStatus(`Ліцензія активна (${info.licenseInfo?.plan || 'Universal'})`, 'valid');
+        // Приховуємо поле введення ліцензійного ключа якщо ліцензія активна
+        this.hideLicenseInput();
       } else {
         this.updateLicenseStatus('Ліцензія не активована', 'invalid');
+        this.showLicenseInput();
       }
     } catch (error) {
       console.error('Помилка завантаження інформації про ліцензію:', error);
       this.updateLicenseStatus('Ліцензія не активована', 'invalid');
+      this.showLicenseInput();
+    }
+  }
+
+  private hideLicenseInput(): void {
+    const licenseInputSection = byId('license-input-section');
+    if (licenseInputSection) {
+      licenseInputSection.style.display = 'none';
+    }
+  }
+
+  private showLicenseInput(): void {
+    const licenseInputSection = byId('license-input-section');
+    if (licenseInputSection) {
+      licenseInputSection.style.display = 'block';
     }
   }
 
