@@ -1,0 +1,105 @@
+{
+  "name": "KontrNahryuk",
+  "version": "1.0.0",
+  "description": "Ukrainian military document processing application with keyword search and structured output generation",
+  "author": "sashashostak",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --port 5177\" \"wait-on http://localhost:5177 && electron . --dev\"",
+    "build:renderer": "vite build",
+    "build:main": "tsc -p electron/tsconfig.json",
+    "build": "npm run build:renderer && npm run build:main",
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:installer": "npm run build && electron-builder --win nsis",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.ukraine.documentprocessor",
+    "productName": "KontrNahryuk",
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!dist/renderer/assets/*.map",
+      "!**/{.git,.hg,.svn,CVS,RCS,SCCS,__pycache__,thumbs.db,.gitignore,.gitkeep,.gitattributes,.npmignore,.eslintrc,.eslintignore,.stylelintrc,.stylelintignore,.jshintrc}",
+      "!**/{README.md,readme.md,LICENSE,license,CHANGELOG.md,changelog.md}"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "copyright": "Copyright © 2024-2025 KontrNahryuk",
+    "forceCodeSigning": false,
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "KontrNahryuk",
+      "sign": false,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "KontrNahryuk",
+      "license": "build/license.txt",
+      "language": "1058"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sashashostak",
+        "repo": "KontrNahryuk",
+        "private": false
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3",
+    "electron": "^38.1.2",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.0.0",
+    "vite": "^7.1.7",
+    "wait-on": "^8.0.0"
+  },
+  "dependencies": {
+    "@types/node-fetch": "^2.6.13",
+    "@types/unzipper": "^0.10.11",
+    "docx": "^9.5.1",
+    "electron-updater": "^6.1.7",
+    "exceljs": "^4.4.0",
+    "lowdb": "^7.0.1",
+    "mammoth": "^1.11.0",
+    "node-fetch": "^2.7.0",
+    "unzipper": "^0.12.3"
+  }
+}

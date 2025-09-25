@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ukrainian Document Processor</title>
+    <link rel="stylesheet" href="./styles/ui.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">⚡ Нахрюк</div>
+        <nav class="nav">
+          <a href="#/functions" id="nav-func">Функції</a>
+          <a href="#/batch" id="nav-batch">Пакетна обробка</a>
+          <a href="#/notes" id="nav-notes">Notes</a>
+          <a href="#/updates" id="nav-updates">Updates</a>
+          <a href="#/settings" id="nav-settings">Settings</a>
+        </nav>
+      </aside>
+
+      <header class="topbar">
+        <div style="display:flex; gap:8px">
+          <button class="btn ghost" id="btn-notify">Notify</button>
+          <button class="btn" id="btn-docs">Docs</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section data-route="/functions" class="route">
+          <div class="card">
+            <h3>Панель Функції</h3>
+
+            <div class="form grid cols-2">
+              <label class="field">
+                <span class="label">Пошук документу Word (наказ)</span>
+                <label class="file-picker">
+                  <input type="file" class="file-input" id="word-file" accept=".doc,.docx" aria-label="Вибрати документ Word">
+                  <span class="file-btn">Вибрати файл</span>
+                  <span class="file-name">Файл не вибрано</span>
+                </label>
+              </label>
+
+              <label class="field">
+                <span class="label">Місце збереження результату</span>
+                <div class="row">
+                  <input class="input" id="result-path" placeholder="Шлях до вихідного файлу…" readonly />
+                  <button class="btn" id="choose-result">Обрати місце…</button>
+                </div>
+                <small class="hint">Кнопка відкриє системний провідник</small>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="grid cols-3 toggles">
+              <label class="toggle">
+                <input type="checkbox" id="t-2bsp" class="nose" checked />
+                <span>2БСП</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="t-order" class="nose" />
+                <span>Розпорядження</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="t-autopen" class="nose" checked />
+                <span>Автовідкриття</span>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+            <div class="actions-bottom">
+              <button class="btn primary" id="btn-process-order">Обробити наказ</button>
+            </div>
+
+            <div class="log-container">
+              <h4>Лог виконання</h4>
+              <pre id="log-body" class="log-body"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/batch" class="route" hidden>
+          <div class="card">
+            <h3>Пакетна обробка Excel файлів</h3>
+            <p class="subtitle">Індексація бійців з помісячних Excel звітів</p>
+
+            <div class="form">
+              <label class="field">
+                <span class="label">Вхідна папка з Excel файлами</span>
+                <div class="row">
+                  <input class="input" id="batch-input-folder" placeholder="Оберіть папку з файлами…" readonly />
+                  <button class="btn" id="btn-choose-batch-folder">Обрати папку</button>
+                </div>
+                <small class="hint">Папка з помісячними Excel файлами (листопад→грудень→січень→...)</small>
+              </label>
+
+              <label class="field">
+                <span class="label">Файл результату</span>
+                <div class="row">
+                  <input class="input" id="batch-output-file" placeholder="Автоматично: Result_YYYYMMDD-HHmm.xlsx" readonly />
+                  <button class="btn" id="btn-choose-batch-output">Обрати місце</button>
+                </div>
+                <small class="hint">За замовчуванням збережеться у вхідній папці</small>
+              </label>
+            </div>
+
+
+
+            <div class="batch-controls">
+              <button class="btn primary" id="btn-start-batch" disabled>
+                <span id="batch-btn-text">Обробити</span>
+              </button>
+              <button class="btn ghost" id="btn-cancel-batch" disabled>Скасувати</button>
+            </div>
+
+            <div class="batch-progress" id="batch-progress" hidden>
+              <div class="progress-info">
+                <div class="progress-bar">
+                  <div class="progress-fill" id="batch-progress-fill"></div>
+                </div>
+                <div class="progress-details">
+                  <span id="batch-progress-percent">0%</span>
+                  <span id="batch-progress-status">Підготовка...</span>
+                </div>
+                <p id="batch-progress-detail">Файл 0/0, лист 0/0</p>
+              </div>
+            </div>
+
+            <div class="batch-log">
+              <h4>Лог виконання</h4>
+              <div class="log-controls">
+                <button class="btn ghost small" id="btn-clear-batch-log">Очистити</button>
+                <button class="btn ghost small" id="btn-save-batch-log">Зберегти лог</button>
+              </div>
+              <div class="log-container">
+                <pre id="batch-log-body" class="log-body"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/notes" class="route" hidden>
+          <div class="card">
+            <h3>Notes</h3>
+            <label style="display:flex; flex-direction:column; gap:8px;">
+              Додати нотатку:
+              <textarea class="input" id="note-input" placeholder="Напишіть щось…"></textarea>
+            </label>
+            <button class="btn" id="btn-add-note">Додати</button>
+            <ul id="notes-list" style="margin-top:12px"></ul>
+          </div>
+        </section>
+
+        <section data-route="/updates" class="route" hidden>
+          <div class="card">
+            <h3>Оновлення застосунку</h3>
+            
+            <div class="update-info">
+              <div class="version-info">
+                <p><strong>Поточна версія:</strong> <span id="current-version">1.0.0</span></p>
+                <p><strong>Статус:</strong> <span id="update-status">Натисніть "Знайти оновлення"</span></p>
+              </div>
+              
+              <div id="update-available" class="update-available" hidden>
+                <div class="update-details">
+                  <h4>Доступна нова версія: <span id="new-version"></span></h4>
+                  <p>Розмір: <span id="update-size"></span></p>
+                  <p>Опубліковано: <span id="update-date"></span></p>
+                  <div class="update-actions">
+                    <a href="#" id="release-notes" target="_blank" class="link">Список змін</a>
+                    <button class="btn primary" id="btn-download-update">Оновити</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="mandatory-update" class="mandatory-update" hidden>
+                <div class="alert error">
+                  <h4>⚠️ Критичне оновлення</h4>
+                  <p>Це оновлення є обов'язковим для продовження роботи</p>
+                  <div class="mandatory-actions">
+                    <button class="btn primary" id="btn-mandatory-update">Оновити зараз</button>
+                    <button class="btn ghost" id="btn-exit-app">Вийти</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="update-progress" class="update-progress" hidden>
+                <div class="progress-info">
+                  <p id="progress-text">Завантаження...</p>
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                  </div>
+                  <div class="progress-details">
+                    <span id="progress-percent">0%</span>
+                    <span id="progress-speed"></span>
+                    <span id="progress-size"></span>
+                  </div>
+                </div>
+                <button class="btn ghost" id="btn-cancel-update">Скасувати</button>
+              </div>
+              
+              <div id="update-error" class="update-error" hidden>
+                <div class="alert error">
+                  <h4>Помилка оновлення</h4>
+                  <p id="error-message"></p>
+                  <div class="error-actions">
+                    <button class="btn" id="btn-retry-update">Повторити</button>
+                    <button class="btn ghost" id="btn-save-log">Зберегти лог</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="update-controls">
+              <button class="btn" id="btn-check-updates">Знайти оновлення</button>
+              <label class="toggle">
+                <input type="checkbox" id="auto-check-updates" checked />
+                <span>Перевіряти при запуску</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/settings" class="route" hidden>
+          <div class="card">
+            <h3>Settings</h3>
+            <label style="display:flex; gap:8px; align-items:center;">
+              Тема:
+              <select class="input" id="theme-select">
+                <option value="system">System</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
