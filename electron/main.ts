@@ -22,7 +22,7 @@ function norm(str: string): string {
     .trim()
 }
 
-function createWindow() {
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -41,6 +41,8 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+  
+  return mainWindow
 }
 
 function setupUpdateHandlers() {
@@ -193,7 +195,9 @@ app.whenReady().then(() => {
   updateService = new UpdateService()
   setupUpdateHandlers()
   setupBatchProcessing()
-  setupOSIntegration(); setupAutoUpdate(); createWindow();
+  setupOSIntegration(); 
+  const window = createWindow();
+  setupAutoUpdate(window);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
