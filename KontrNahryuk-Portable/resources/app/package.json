@@ -1,6 +1,6 @@
 {
   "name": "kontr-nahryuk",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "KontrNahryuk - Ukrainian military document processing application with keyword search and structured output generation",
   "author": "sashashostak",
   "main": "dist/electron/main.js",
