@@ -137,13 +137,20 @@ Icon?
 *~
 .directory
 
-# Large files for GitHub 
+# Large files for GitHub (>100MB limit)
 KontrNahryuk-Portable/KontrNahryuk.exe
 KontrNahryuk-Portable/*.exe
 *.zip
 KontrNahryuk-v*.zip
 *-Portable.zip
+*-Final.zip
 
-# Release files
+# Build outputs
 release/
 dist/
+
+# Development files
+scripts/node_modules/
+
+# Testing files  
+test-*/
