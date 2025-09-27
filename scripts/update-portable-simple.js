@@ -61,6 +61,37 @@ async function updatePortableSimple() {
                 // Отримуємо розмір файлу
                 const stats = await fs.stat(exePath);
                 console.log(`📊 Розмір: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                
+                // Автоматично змінюємо іконку на свинку
+                console.log('🐷 Оновлюємо іконку на свинку...');
+                const iconPath = path.join(__dirname, '../build/icon.ico');
+                const rceditPath = path.join(__dirname, '../node_modules/rcedit/bin/rcedit.exe');
+                
+                try {
+                    const rceditProcess = spawn(rceditPath, [exePath, '--set-icon', iconPath], {
+                        stdio: 'inherit'
+                    });
+                    
+                    await new Promise((resolve, reject) => {
+                        rceditProcess.on('close', (code) => {
+                            if (code === 0) {
+                                console.log('✅ Іконка свинки встановлена!');
+                                resolve(true);
+                            } else {
+                                console.log(`⚠️ Помилка зміни іконки (код ${code})`);
+                                resolve(false);
+                            }
+                        });
+                        
+                        rceditProcess.on('error', (error) => {
+                            console.log('⚠️ Не вдалося змінити іконку:', error.message);
+                            resolve(false);
+                        });
+                    });
+                } catch (iconError) {
+                    console.log('⚠️ Помилка з іконкою:', iconError.message);
+                }
+                
             } catch {
                 console.log('⚠️ EXE файл не знайдено. Можливо потрібно створити початкову Portable версію вручну.');
             }
