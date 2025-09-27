@@ -135,5 +135,15 @@ Icon?
 
 # Linux specific
 *~
-.directoryKontrNahryuk-Portable/KontrNahryuk.exe
-KontrNahryuk-v1.1.0-Portable.zip
+.directory
+
+# Large files for GitHub 
+KontrNahryuk-Portable/KontrNahryuk.exe
+KontrNahryuk-Portable/*.exe
+*.zip
+KontrNahryuk-v*.zip
+*-Portable.zip
+
+# Release files
+release/
+dist/
