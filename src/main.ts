@@ -55,10 +55,35 @@ function setupSettingsAutoSave() {
   });
 }
 
+// Check existing license key on startup
+async function checkExistingLicense() {
+  try {
+    if (window.api?.checkExistingLicense) {
+      const licenseResult = await window.api.checkExistingLicense();
+      if (licenseResult?.hasAccess) {
+        console.log('✅ Ліцензійний ключ дійсний');
+        return true;
+      } else {
+        console.log('❌ Потрібен дійсний ліцензійний ключ');
+        return false;
+      }
+    }
+  } catch (error) {
+    console.warn('Помилка перевірки ліцензійного ключа:', error);
+    return false;
+  }
+  return false;
+}
+
 // Initialize settings on page load
 (async () => {
   await loadSettings();
   setupSettingsAutoSave();
+  
+  // Перевіряємо ліцензійний ключ при запуску
+  setTimeout(async () => {
+    await checkExistingLicense();
+  }, 1000);
 })();
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;

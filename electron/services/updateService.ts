@@ -107,14 +107,28 @@ fwIDAQAB
 -----END PUBLIC KEY-----`
     
     this.ensureDirectoryStructure()
-    this.loadLicenseKey()
+    // Завантажуємо ключ з затримкою, щоб переконатись що storage вже ініціалізовано
+    setTimeout(() => this.loadLicenseKey(), 100)
+  }
+
+  // Публічний метод для ініціалізації ліцензії з main процесу
+  public async initializeLicense(): Promise<void> {
+    await this.loadLicenseKey()
   }
 
   // Завантаження ліцензійного ключа
   private async loadLicenseKey(): Promise<void> {
     try {
       const { storage } = require('../main')
+      if (!storage) {
+        this.log('Storage ще не ініціалізовано, повторна спроба через 500ms')
+        setTimeout(() => this.loadLicenseKey(), 500)
+        return
+      }
       this.licenseKey = await storage?.get('licenseKey') || null
+      if (this.licenseKey) {
+        this.log('Ліцензійний ключ успішно завантажено з storage')
+      }
     } catch (error) {
       this.log(`Помилка завантаження ліцензійного ключа: ${error}`)
     }

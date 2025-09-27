@@ -37,6 +37,7 @@ interface ElectronAPI {
   setLicenseKey(key: string): Promise<any>
   getLicenseInfo(): Promise<any>
   checkUpdateAccess(): Promise<any>
+  checkExistingLicense(): Promise<any>
   onUpdateStateChanged(callback: (state: string) => void): void
   onUpdateProgress(callback: (progress: any) => void): void
   
@@ -75,6 +76,7 @@ contextBridge.exposeInMainWorld('api', {
   setLicenseKey: (key: string): Promise<any> => ipcRenderer.invoke('updates:set-license', key),
   getLicenseInfo: (): Promise<any> => ipcRenderer.invoke('updates:get-license-info'),
   checkUpdateAccess: (): Promise<any> => ipcRenderer.invoke('updates:check-access'),
+  checkExistingLicense: (): Promise<any> => ipcRenderer.invoke('updates:check-existing-license'),
   onUpdateStateChanged: (callback: (state: string) => void): void => {
     ipcRenderer.on('updates:state-changed', (_, state) => callback(state))
   },

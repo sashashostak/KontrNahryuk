@@ -42,6 +42,7 @@ interface Window {
     getUpdateVersion(): Promise<string>
     getUpdateState(): Promise<string>
     getUpdateProgress(): Promise<any>
+    checkExistingLicense(): Promise<any>
     onUpdateStateChanged(callback: (state: string) => void): void
     onUpdateProgress(callback: (progress: any) => void): void
     

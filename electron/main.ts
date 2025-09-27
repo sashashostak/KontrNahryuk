@@ -101,6 +101,11 @@ function setupUpdateHandlers() {
     return await updateService.setLicenseKey(key)
   })
 
+  // Перевірка існуючого ліцензійного ключа при запуску
+  ipcMain.handle('updates:check-existing-license', async () => {
+    return await updateService.checkUpdateAccess()
+  })
+
   // Отримання інформації про ліцензію
   ipcMain.handle('updates:get-license-info', async () => {
     return await updateService.getLicenseInfo()
@@ -214,6 +219,8 @@ function setupBatchProcessing() {
 app.whenReady().then(() => {
   storage = createStorage()
   updateService = new UpdateService()
+  // Переконуємося що updateService ініціалізує ліцензійний ключ після storage
+  setTimeout(() => updateService.initializeLicense(), 200)
   setupUpdateHandlers()
   setupBatchProcessing()
   setupOSIntegration(); 

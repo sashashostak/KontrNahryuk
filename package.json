@@ -18,7 +18,11 @@
     "package": "npm run build && electron-packager . KontrNahryuk --platform=win32 --arch=x64 --out=release --overwrite --app-copyright=\"Copyright (c) 2024-2025 KontrNahryuk\" --app-version=1.0.0",
     "postinstall": "electron-builder install-app-deps",
     "version:bump": "node scripts/bump-version.js",
-    "version:patch": "npm run version:bump && npm run build && npm run package"
+    "version:patch": "npm run version:bump && npm run build && npm run package",
+    "update:portable": "node scripts/update-portable.js",
+    "update:portable:simple": "node scripts/update-portable-simple.js",
+    "watch:portable": "node scripts/watch-and-update.js",
+    "dev:with-portable": "npm run update:portable:simple && npm run dev"
   },
   "build": {
     "appId": "com.ukraine.kontrnahryuk",
@@ -40,6 +44,7 @@
     },
     "copyright": "Copyright © 2024-2025 KontrNahryuk",
     "forceCodeSigning": false,
+    "afterSign": null,
     "mac": {
       "target": [
         "dmg",
@@ -56,8 +61,10 @@
           ]
         }
       ],
+      "icon": "build/icon.ico",
       "requestedExecutionLevel": "asInvoker",
-      "sign": false
+      "sign": false,
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
@@ -90,8 +97,11 @@
     "electron": "^38.1.2",
     "electron-builder": "^24.13.3",
     "electron-packager": "^17.1.2",
+    "sharp": "^0.34.4",
+    "to-ico": "^1.1.5",
     "typescript": "^5.0.0",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wait-on": "^9.0.1"
   },
   "dependencies": {
     "@types/node-fetch": "^2.6.13",
