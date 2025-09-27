@@ -38,11 +38,23 @@ async function updatePortableSimple() {
         try {
             await fs.mkdir(targetAppPath, { recursive: true });
             
-            // Копіюємо dist папку
+            // Копіюємо dist папку (скомпільовані файли)
             const distSource = path.join(__dirname, '../dist');
             const distTarget = path.join(targetAppPath, 'dist');
             
             await copyDirectory(distSource, distTarget);
+            
+            // Копіюємо electron папку (сирцеві TypeScript файли)
+            const electronSource = path.join(__dirname, '../electron');
+            const electronTarget = path.join(targetAppPath, 'electron');
+            
+            await copyDirectory(electronSource, electronTarget);
+            
+            // Копіюємо src папку 
+            const srcSource = path.join(__dirname, '../src');
+            const srcTarget = path.join(targetAppPath, 'src');
+            
+            await copyDirectory(srcSource, srcTarget);
             
             // Копіюємо package.json
             const packageSource = path.join(__dirname, '../package.json');
