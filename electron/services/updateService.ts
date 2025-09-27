@@ -125,7 +125,7 @@ fwIDAQAB
         setTimeout(() => this.loadLicenseKey(), 500)
         return
       }
-      this.licenseKey = await storage?.get('licenseKey') || null
+      this.licenseKey = await storage?.getSetting('licenseKey') || null
       if (this.licenseKey) {
         this.log('Ліцензійний ключ успішно завантажено з storage')
       }
@@ -141,7 +141,7 @@ fwIDAQAB
       if (accessResult.hasAccess) {
         this.licenseKey = key
         const { storage } = require('../main')
-        await storage?.set('licenseKey', key)
+        await storage?.setSetting('licenseKey', key)
         this.log('Ліцензійний ключ успішно збережено')
         return accessResult
       } else {
@@ -233,7 +233,7 @@ fwIDAQAB
     try {
       this.licenseKey = null
       const { storage } = require('../main')
-      await storage?.delete('licenseKey')
+      await storage?.deleteSetting('licenseKey')
       this.log('Ліцензійний ключ видалено')
     } catch (error) {
       this.log(`Помилка видалення ліцензійного ключа: ${error}`)

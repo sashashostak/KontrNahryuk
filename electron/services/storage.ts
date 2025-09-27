@@ -11,6 +11,7 @@ type DBData = {
 export interface Storage {
   getSetting<T=any>(key: string, fallback?: T): Promise<T>
   setSetting<T=any>(key: string, value: T): Promise<void>
+  deleteSetting(key: string): Promise<void>
   addNote(text: string): Promise<{ id: string, text: string, createdAt: number }>
   listNotes(): Promise<{ id: string, text: string, createdAt: number }[]>
 }
@@ -45,6 +46,11 @@ class JSONStorage implements Storage {
   
   async setSetting<T>(key: string, value: T): Promise<void> {
     this.data.settings[key] = value
+    await this.save()
+  }
+
+  async deleteSetting(key: string): Promise<void> {
+    delete this.data.settings[key]
     await this.save()
   }
   
