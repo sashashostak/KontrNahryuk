@@ -304,7 +304,7 @@ class UpdateManager {
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.2.0';
+    if (versionEl) versionEl.textContent = '1.2.1';
   }
 
   private async checkForUpdates() {
@@ -353,8 +353,9 @@ class UpdateManager {
           this.currentUpdateInfo = { hasUpdate, latestVersion, releaseInfo };
         }
       } else {
-        // Актуальна версія
-        if (statusDiv) statusDiv.textContent = 'У вас встановлена остання версія програми';
+        // Актуальна версія - ховаємо блок оновлення і показуємо статус
+        if (statusDiv) statusDiv.textContent = 'Актуальна версія';
+        if (updateAvailableDiv) updateAvailableDiv.hidden = true;
       }
     } catch (error) {
       console.error('Помилка перевірки оновлень:', error);

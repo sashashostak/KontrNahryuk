@@ -87,7 +87,7 @@ class UpdateService extends EventEmitter {
   constructor(storage: any) {
     super()
     this.storage = storage
-    this.currentVersion = '1.1.2'
+    this.currentVersion = '1.2.1'
     
     // Структура папок для оновлень у %LocalAppData%
     const localAppData = process.env.LOCALAPPDATA || process.env.APPDATA || ''
@@ -626,6 +626,37 @@ fwIDAQAB
     console.log(`[UpdateService] ${message}`)
   }
 
+  // Допоміжний метод для порівняння версій
+  private isNewerVersion(remoteVersion: string, currentVersion: string): boolean {
+    // Очищаємо версії від префіксів v/V і пробілів
+    const cleanRemote = remoteVersion.replace(/^[vV]/, '').trim()
+    const cleanCurrent = currentVersion.replace(/^[vV]/, '').trim()
+    
+    // Розбиваємо на частини (major.minor.patch)
+    const remoteParts = cleanRemote.split('.').map(part => parseInt(part.replace(/[^\d]/g, ''), 10) || 0)
+    const currentParts = cleanCurrent.split('.').map(part => parseInt(part.replace(/[^\d]/g, ''), 10) || 0)
+    
+    // Доповнюємо масиви до однакової довжини
+    while (remoteParts.length < 3) remoteParts.push(0)
+    while (currentParts.length < 3) currentParts.push(0)
+    
+    this.log(`Порівняння версій: remote=[${remoteParts.join('.')}] vs current=[${currentParts.join('.')}]`)
+    
+    // Порівнюємо по частинах: major -> minor -> patch
+    for (let i = 0; i < 3; i++) {
+      if (remoteParts[i] > currentParts[i]) {
+        this.log(`Remote версія новіша на рівні ${i === 0 ? 'major' : i === 1 ? 'minor' : 'patch'}`)
+        return true
+      } else if (remoteParts[i] < currentParts[i]) {
+        this.log(`Remote версія старіша на рівні ${i === 0 ? 'major' : i === 1 ? 'minor' : 'patch'}`)
+        return false
+      }
+    }
+    
+    this.log('Версії однакові')
+    return false // Версії однакові
+  }
+
   // Публічні властивості
   getCurrentVersion(): string {
     return this.currentVersion
@@ -663,10 +694,10 @@ fwIDAQAB
 
       this.log(`Поточна версія: ${currentVersion}, Остання версія: ${latestVersion}`)
 
-      // Перевіряємо чи є оновлення
-      const hasUpdate = latestVersion !== currentVersion && 
-                       latestVersion !== `v${currentVersion}` &&
-                       latestVersion !== currentVersion.replace(/^v/, '')
+      // Перевіряємо чи є оновлення з правильним порівнянням версій
+      const hasUpdate = this.isNewerVersion(latestVersion, currentVersion)
+
+      this.log(`Результат порівняння: ${hasUpdate ? 'Є оновлення' : 'Оновлення немає'}`)
 
       return {
         hasUpdate,
