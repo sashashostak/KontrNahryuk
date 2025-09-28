@@ -12,7 +12,7 @@
       <aside class="sidebar">
         <div class="brand">⚡ Нахрюк</div>
         <nav class="nav">
-          <a href="#/functions" id="nav-func">Функції</a>
+          <a href="#/functions" id="nav-func">Накази</a>
           <a href="#/batch" id="nav-batch">Пакетна обробка</a>
           <a href="#/notes" id="nav-notes">Notes</a>
           <a href="#/updates" id="nav-updates">Updates</a>
@@ -53,16 +53,70 @@
         </div>
         <section data-route="/functions" class="route">
           <div class="card">
-            <h3>Панель Функції</h3>
+            <h3>Обробка наказів</h3>
+
+            <!-- Поле для введення тексту наказу -->
+            <div class="form">
+              <label class="field">
+                <span class="label">Текст наказу для пошуку</span>
+                <textarea 
+                  class="input" 
+                  id="order-text-input" 
+                  placeholder="Введіть текст наказу або частину тексту для пошуку..."
+                  rows="3"
+                  style="resize: vertical; min-height: 80px;"
+                ></textarea>
+                <small class="hint">Введіть текст, який потрібно знайти в документах</small>
+              </label>
+            </div>
+
+            <div class="divider"></div>
 
             <div class="form grid cols-2">
               <label class="field">
-                <span class="label">Пошук документу Word (наказ)</span>
-                <label class="file-picker">
-                  <input type="file" class="file-input" id="word-file" accept=".doc,.docx" aria-label="Вибрати документ Word">
-                  <span class="file-btn">Вибрати файл</span>
-                  <span class="file-name">Файл не вибрано</span>
-                </label>
+                <span class="label">Джерело для пошуку</span>
+                <div class="source-selector">
+                  <div class="radio-group">
+                    <label class="radio-option">
+                      <input type="radio" name="source-type" value="single-file" id="source-single" checked>
+                      <span class="radio-label">Один файл</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="source-type" value="multiple-files" id="source-multiple">
+                      <span class="radio-label">Декілька файлів</span>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" name="source-type" value="folder" id="source-folder">
+                      <span class="radio-label">Вся папка</span>
+                    </label>
+                  </div>
+                  
+                  <!-- Вибір одного файлу -->
+                  <div class="source-input" id="single-file-input">
+                    <label class="file-picker">
+                      <input type="file" class="file-input" id="word-file" accept=".doc,.docx" aria-label="Вибрати документ Word">
+                      <span class="file-btn">Вибрати файл</span>
+                      <span class="file-name">Файл не вибрано</span>
+                    </label>
+                  </div>
+                  
+                  <!-- Вибір декількох файлів -->
+                  <div class="source-input" id="multiple-files-input" style="display: none;">
+                    <label class="file-picker">
+                      <input type="file" class="file-input" id="word-files" accept=".doc,.docx" multiple aria-label="Вибрати документи Word">
+                      <span class="file-btn">Вибрати файли</span>
+                      <span class="file-name">Файли не вибрано</span>
+                    </label>
+                  </div>
+                  
+                  <!-- Вибір папки -->
+                  <div class="source-input" id="folder-input" style="display: none;">
+                    <div class="row">
+                      <input class="input" id="folder-path" placeholder="Оберіть папку з документами…" readonly />
+                      <button class="btn" id="choose-folder">Обрати папку</button>
+                    </div>
+                  </div>
+                </div>
               </label>
 
               <label class="field">
@@ -75,7 +129,18 @@
               </label>
             </div>
 
-            <div class="divider"></div>
+            <!-- Умовне поле Excel для Розпорядження -->
+            <div class="section excel-section" id="excel-section" style="display: none;">
+              <label class="field">
+                <span class="label">Excel файл зі списком імен</span>
+                <div class="row">
+                  <input class="input" id="excel-path" placeholder="Файл Excel з іменами…" readonly />
+                  <button class="btn" id="choose-excel">Обрати файл…</button>
+                </div>
+                <small class="hint">Потрібен Excel файл з іменами для пошуку в розпорядженнях</small>
+              </label>
+              <div class="divider"></div>
+            </div>
 
             <div class="grid cols-3 toggles">
               <label class="toggle">

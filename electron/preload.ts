@@ -49,6 +49,7 @@ interface ElectronAPI {
   // Batch Processing API
   selectBatchDirectory(): Promise<string | undefined>
   selectBatchOutputFile(): Promise<string | undefined>
+  selectExcelFile(): Promise<string | undefined>
   startBatchProcessing(options: any): Promise<any>
   cancelBatchProcessing(): Promise<boolean>
   isBatchRunning(): Promise<boolean>
@@ -108,6 +109,7 @@ contextBridge.exposeInMainWorld('api', {
   // Batch Processing API
   selectBatchDirectory: (): Promise<string | undefined> => ipcRenderer.invoke('batch:select-directory'),
   selectBatchOutputFile: (): Promise<string | undefined> => ipcRenderer.invoke('batch:select-output-file'),
+  selectExcelFile: (): Promise<string | undefined> => ipcRenderer.invoke('batch:select-excel-file'),
   startBatchProcessing: (options: any): Promise<any> => ipcRenderer.invoke('batch:process', options),
   cancelBatchProcessing: (): Promise<boolean> => ipcRenderer.invoke('batch:cancel'),
   isBatchRunning: (): Promise<boolean> => ipcRenderer.invoke('batch:is-running'),

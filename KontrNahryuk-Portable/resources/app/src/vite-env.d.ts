@@ -54,6 +54,7 @@ interface Window {
     // Batch Processing API
     selectBatchDirectory(): Promise<string | undefined>
     selectBatchOutputFile(): Promise<string | undefined>
+    selectExcelFile(): Promise<string | undefined>
     startBatchProcessing(options: any): Promise<any>
     cancelBatchProcessing(): Promise<boolean>
     isBatchRunning(): Promise<boolean>

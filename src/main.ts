@@ -271,7 +271,151 @@ function bindPrettyFile(id: string) {
 
 // Initialize file pickers
 bindPrettyFile('word-file');
+bindPrettyFile('word-files');
 bindPrettyFile('excel-db');
+
+// Source Selection Manager
+class SourceSelectionManager {
+  private sourceRadios: NodeListOf<HTMLInputElement>;
+  private singleFileInput: HTMLElement | null;
+  private multipleFilesInput: HTMLElement | null;
+  private folderInput: HTMLElement | null;
+
+  constructor() {
+    this.sourceRadios = document.querySelectorAll('input[name="source-type"]');
+    this.singleFileInput = byId('single-file-input');
+    this.multipleFilesInput = byId('multiple-files-input');
+    this.folderInput = byId('folder-input');
+    
+    this.bindEvents();
+  }
+
+  private bindEvents() {
+    this.sourceRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        this.handleSourceChange(radio.value);
+      });
+    });
+
+    // Обробник для кнопки вибору папки
+    byId('choose-folder')?.addEventListener('click', () => {
+      this.selectFolder();
+    });
+  }
+
+  private handleSourceChange(sourceType: string) {
+    // Ховаємо всі inputs
+    if (this.singleFileInput) this.singleFileInput.style.display = 'none';
+    if (this.multipleFilesInput) this.multipleFilesInput.style.display = 'none';
+    if (this.folderInput) this.folderInput.style.display = 'none';
+
+    // Показуємо потрібний input
+    switch (sourceType) {
+      case 'single-file':
+        if (this.singleFileInput) this.singleFileInput.style.display = 'block';
+        break;
+      case 'multiple-files':
+        if (this.multipleFilesInput) this.multipleFilesInput.style.display = 'block';
+        break;
+      case 'folder':
+        if (this.folderInput) this.folderInput.style.display = 'block';
+        break;
+    }
+  }
+
+  private async selectFolder() {
+    try {
+      const folderPath = await window.api?.selectBatchDirectory?.();
+      if (folderPath) {
+        const folderInput = byId('folder-path') as HTMLInputElement;
+        if (folderInput) {
+          folderInput.value = folderPath;
+        }
+        log(`📁 Обрано папку: ${folderPath}`);
+      }
+    } catch (error) {
+      console.error('Помилка вибору папки:', error);
+      log(`❌ Помилка вибору папки: ${error}`);
+    }
+  }
+
+  public getSelectedSource() {
+    const checkedRadio = document.querySelector('input[name="source-type"]:checked') as HTMLInputElement;
+    return checkedRadio ? checkedRadio.value : 'single-file';
+  }
+
+  public getSelectedFiles() {
+    const sourceType = this.getSelectedSource();
+    
+    switch (sourceType) {
+      case 'single-file':
+        const singleFile = byId('word-file') as HTMLInputElement;
+        return singleFile?.files ? Array.from(singleFile.files) : [];
+        
+      case 'multiple-files':
+        const multipleFiles = byId('word-files') as HTMLInputElement;
+        return multipleFiles?.files ? Array.from(multipleFiles.files) : [];
+        
+      case 'folder':
+        const folderPath = (byId('folder-path') as HTMLInputElement)?.value;
+        return folderPath ? [folderPath] : [];
+        
+      default:
+        return [];
+    }
+  }
+}
+
+// Initialize source selection
+const sourceManager = new SourceSelectionManager();
+
+// Section Manager for conditional display
+class SectionManager {
+  private orderCheckbox: HTMLInputElement | null;
+  private excelSection: HTMLElement | null;
+
+  constructor() {
+    this.orderCheckbox = byId('t-order') as HTMLInputElement;
+    this.excelSection = byId('excel-section');
+    this.bindEvents();
+  }
+
+  private bindEvents() {
+    this.orderCheckbox?.addEventListener('change', () => {
+      this.toggleExcelSection();
+    });
+
+    // Обробник для кнопки вибору Excel файлу
+    byId('choose-excel')?.addEventListener('click', () => {
+      this.selectExcelFile();
+    });
+  }
+
+  private toggleExcelSection() {
+    if (this.excelSection) {
+      this.excelSection.style.display = this.orderCheckbox?.checked ? 'block' : 'none';
+    }
+  }
+
+  private async selectExcelFile() {
+    try {
+      const filePath = await window.api?.selectExcelFile?.();
+      if (filePath) {
+        const excelInput = byId('excel-path') as HTMLInputElement;
+        if (excelInput) {
+          excelInput.value = filePath;
+        }
+        log(`📊 Обрано Excel файл: ${filePath}`);
+      }
+    } catch (error) {
+      console.error('Помилка вибору Excel файлу:', error);
+      log(`❌ Помилка вибору Excel файлу: ${error}`);
+    }
+  }
+}
+
+// Initialize section manager
+const sectionManager = new SectionManager();
 
 // Updates functionality
 class UpdateManager {
@@ -309,7 +453,7 @@ class UpdateManager {
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.2.2';
+    if (versionEl) versionEl.textContent = '1.2.3';
   }
 
   private async checkForUpdates() {

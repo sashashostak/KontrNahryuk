@@ -340,6 +340,20 @@ function setupBatchProcessing() {
     })
     return result.canceled ? null : result.filePath
   })
+
+  // Вибір Excel файлу з іменами
+  ipcMain.handle('batch:select-excel-file', async () => {
+    const { dialog } = require('electron')
+    const result = await dialog.showOpenDialog({
+      title: 'Оберіть Excel файл з іменами',
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
 }
 
 app.whenReady().then(async () => {
