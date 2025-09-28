@@ -281,6 +281,7 @@ class UpdateManager {
     this.bindEvents();
     this.loadCurrentVersion();
     this.checkLicenseOnStartup();
+    this.setupUpdateEventListeners();
   }
 
   private bindEvents() {
@@ -291,6 +292,10 @@ class UpdateManager {
     byId('btn-manual-download')?.addEventListener('click', () => this.openDownloadPage());
     byId('btn-cancel-update')?.addEventListener('click', () => this.cancelUpdate());
     byId('btn-restart-after-update')?.addEventListener('click', () => this.restartApp());
+    
+    // Кнопки діалогу помилок оновлення
+    byId('btn-retry-update')?.addEventListener('click', () => this.retryUpdate());
+    byId('btn-save-log')?.addEventListener('click', () => this.saveUpdateLog());
 
     // Обробка ліцензійного ключа
     byId('btn-set-license')?.addEventListener('click', () => this.setLicenseKey());
@@ -304,7 +309,7 @@ class UpdateManager {
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.2.1';
+    if (versionEl) versionEl.textContent = '1.2.2';
   }
 
   private async checkForUpdates() {
@@ -677,6 +682,99 @@ class UpdateManager {
     if (errorDiv) errorDiv.hidden = false;
     if (errorMessage) errorMessage.textContent = message;
     if (progressDiv) progressDiv.hidden = true;
+  }
+
+  private retryUpdate(): void {
+    // Ховаємо діалог помилки і повторюємо спробу оновлення
+    const errorDiv = byId('update-error');
+    if (errorDiv) errorDiv.hidden = true;
+    
+    // Повторюємо завантаження оновлення
+    this.downloadAndInstallUpdate();
+  }
+
+  private async saveUpdateLog(): Promise<void> {
+    try {
+      // Отримуємо текст помилки
+      const errorMessage = byId('error-message')?.textContent || 'Невідома помилка оновлення';
+      
+      // Створюємо лог з деталями
+      const logContent = [
+        `=== Лог помилки оновлення KontrNahryuk ===`,
+        `Час: ${new Date().toLocaleString()}`,
+        `Поточна версія: 1.2.2`,
+        `Спроба оновлення до: ${this.currentUpdateInfo?.latestVersion || 'невідомо'}`,
+        `Помилка: ${errorMessage}`,
+        ``,
+        `Деталі оновлення:`,
+        JSON.stringify(this.currentUpdateInfo, null, 2),
+        ``,
+        `=== Кінець логу ===`
+      ].join('\n');
+
+      // Використовуємо API для збереження файлу
+      const success = await (window as any).api?.saveUpdateLog?.(logContent);
+      
+      if (success) {
+        // Показуємо повідомлення про успішне збереження
+        const errorMessage = byId('error-message');
+        if (errorMessage) {
+          const originalText = errorMessage.textContent;
+          errorMessage.textContent = 'Лог збережено! Перевірте папку Downloads.';
+          
+          // Повертаємо оригінальний текст через 3 секунди
+          setTimeout(() => {
+            if (errorMessage) errorMessage.textContent = originalText;
+          }, 3000);
+        }
+      } else {
+        console.error('Не вдалося зберегти лог оновлення');
+      }
+    } catch (error) {
+      console.error('Помилка збереження логу:', error);
+    }
+  }
+
+  private setupUpdateEventListeners(): void {
+    // Обробники повідомлень від electron process
+    (window as any).api?.onUpdateProgress?.((progress: any) => {
+      this.updateProgressDisplay(progress);
+    });
+
+    (window as any).api?.onUpdateError?.((error: string) => {
+      this.showUpdateError(error);
+    });
+
+    (window as any).api?.onUpdateDownloadStarted?.((info: any) => {
+      this.showUpdateProgress(`Завантаження ${info.fileName}...`);
+    });
+
+    (window as any).api?.onUpdateDownloadCompleted?.(() => {
+      this.showUpdateProgress('✅ Завантаження завершено! Файл збережено в папці Downloads.');
+      setTimeout(() => {
+        this.hideUpdateProgress();
+      }, 3000);
+    });
+  }
+
+  private updateProgressDisplay(progress: any): void {
+    const progressDiv = byId('update-progress');
+    const progressText = byId('progress-text');
+    const progressBar = byId('progress-bar');
+
+    if (progressDiv) progressDiv.hidden = false;
+    
+    if (progressText) {
+      if (progress.percentage !== undefined) {
+        progressText.textContent = `Завантаження: ${Math.round(progress.percentage)}%`;
+      } else if (progress.message) {
+        progressText.textContent = progress.message;
+      }
+    }
+
+    if (progressBar && progress.percentage !== undefined) {
+      progressBar.style.width = `${progress.percentage}%`;
+    }
   }
 
 

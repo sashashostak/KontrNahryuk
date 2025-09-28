@@ -85,14 +85,21 @@ contextBridge.exposeInMainWorld('api', {
   getLicenseInfo: (): Promise<any> => ipcRenderer.invoke('updates:get-license-info'),
   checkUpdateAccess: (): Promise<any> => ipcRenderer.invoke('updates:check-access'),
   checkExistingLicense: (): Promise<any> => ipcRenderer.invoke('updates:check-existing-license'),
+  saveUpdateLog: (content: string): Promise<boolean> => ipcRenderer.invoke('updates:save-log', content),
   onUpdateStateChanged: (callback: (state: string) => void): void => {
     ipcRenderer.on('updates:state-changed', (_, state) => callback(state))
   },
   onUpdateProgress: (callback: (progress: any) => void): void => {
-    ipcRenderer.on('updates:download-progress', (_, progress) => callback(progress))
+    ipcRenderer.on('updates:progress', (_, progress) => callback(progress))
   },
   onUpdateError: (callback: (error: string) => void): void => {
     ipcRenderer.on('updates:error', (_, error) => callback(error))
+  },
+  onUpdateDownloadStarted: (callback: (info: any) => void): void => {
+    ipcRenderer.on('updates:download-started', (_, info) => callback(info))
+  },
+  onUpdateDownloadCompleted: (callback: (info: any) => void): void => {
+    ipcRenderer.on('updates:download-completed', (_, info) => callback(info))
   },
   onUpdateComplete: (callback: () => void): void => {
     ipcRenderer.on('updates:complete', () => callback())

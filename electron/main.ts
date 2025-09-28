@@ -127,27 +127,50 @@ function setupUpdateHandlers() {
     return await updateService.checkForUpdatesViaGitHub()
   })
 
-  // Автооновлення - завантаження і встановлення
+  // Автооновлення - завантаження і встановлення через GitHub Releases
   ipcMain.handle('updates:download-and-install', async (_, updateInfo) => {
     try {
-      const manifest = updateInfo.releaseInfo?.assets?.[0]
-      if (!manifest) {
-        throw new Error('Не знайдено файлів для завантаження')
+      console.log('Спроба завантажити оновлення:', updateInfo)
+      
+      const releaseInfo = updateInfo.releaseInfo
+      if (!releaseInfo) {
+        throw new Error('Відсутня інформація про реліз')
       }
 
-      // Спочатку завантажуємо
-      const downloadSuccess = await updateService.downloadUpdate(manifest)
-      if (!downloadSuccess) {
-        throw new Error('Не вдалося завантажити оновлення')
+      // Шукаємо portable ZIP файл в assets
+      const portableAsset = releaseInfo.assets?.find((asset: any) => 
+        asset.name.toLowerCase().includes('portable') && asset.name.endsWith('.zip')
+      )
+      
+      if (!portableAsset) {
+        // Якщо немає portable файлу, відкриваємо сторінку релізу для ручного завантаження
+        shell.openExternal(releaseInfo.html_url)
+        throw new Error('Автоматичне оновлення недоступне. Відкрито сторінку для ручного завантаження.')
       }
 
-      // Потім встановлюємо
-      const installSuccess = await updateService.installUpdate(manifest)
-      if (!installSuccess) {
-        throw new Error('Не вдалося встановити оновлення')
+      // Повідомляємо користувача що почали завантаження
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('updates:download-started', {
+          fileName: portableAsset.name,
+          size: portableAsset.size
+        })
+      })
+
+      // Завантажуємо portable версію через GitHub API
+      const success = await updateService.downloadFromGitHub(portableAsset)
+      
+      if (success) {
+        // Повідомляємо про успішне завантаження
+        BrowserWindow.getAllWindows().forEach(window => {
+          window.webContents.send('updates:download-completed', {
+            filePath: success
+          })
+        })
+        return true
+      } else {
+        throw new Error('Не вдалося завантажити файл оновлення')
       }
 
-      return true
     } catch (error) {
       console.error('Помилка автооновлення:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -166,6 +189,38 @@ function setupUpdateHandlers() {
       return true
     } catch (error) {
       console.error('Помилка скасування оновлення:', error)
+      return false
+    }
+  })
+
+  // Збереження лог файлу оновлень
+  ipcMain.handle('updates:save-log', async (_, content: string) => {
+    try {
+      const { dialog } = require('electron')
+      const fs = require('fs')
+      const path = require('path')
+      const os = require('os')
+      
+      // Пропонуємо зберегти у Downloads
+      const defaultPath = path.join(os.homedir(), 'Downloads', `KontrNahryuk-Update-Log-${Date.now()}.txt`)
+      
+      const result = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
+        title: 'Зберегти лог оновлення',
+        defaultPath,
+        filters: [
+          { name: 'Text Files', extensions: ['txt'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+      
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, content, 'utf8')
+        return true
+      }
+      
+      return false
+    } catch (error) {
+      console.error('Помилка збереження лог файлу:', error)
       return false
     }
   })
