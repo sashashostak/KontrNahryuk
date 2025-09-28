@@ -191,7 +191,8 @@
                   <p>Опубліковано: <span id="update-date"></span></p>
                   <div class="update-actions">
                     <a href="#" id="release-notes" target="_blank" class="link">Список змін</a>
-                    <button class="btn primary" id="btn-download-update">Оновити</button>
+                    <button class="btn primary" id="btn-auto-update">🐷 Оновити Нахрюк</button>
+                    <button class="btn ghost" id="btn-manual-download">Завантажити вручну</button>
                   </div>
                 </div>
               </div>
@@ -209,17 +210,21 @@
               
               <div id="update-progress" class="update-progress" hidden>
                 <div class="progress-info">
+                  <h4>🐷 Оновлення Нахрюка</h4>
                   <p id="progress-text">Завантаження...</p>
                   <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
+                    <div class="progress-fill" id="progress-fill" style="width: 0%; transition: width 0.3s ease;"></div>
                   </div>
                   <div class="progress-details">
                     <span id="progress-percent">0%</span>
-                    <span id="progress-speed"></span>
-                    <span id="progress-size"></span>
+                    <span id="progress-speed">0 KB/s</span>
+                    <span id="progress-size">0 / 0 MB</span>
                   </div>
                 </div>
-                <button class="btn ghost" id="btn-cancel-update">Скасувати</button>
+                <div class="progress-actions">
+                  <button class="btn ghost" id="btn-cancel-update">Скасувати</button>
+                  <button class="btn ghost" id="btn-restart-after-update" style="display:none;">Перезапустити</button>
+                </div>
               </div>
               
               <div id="update-error" class="update-error" hidden>
@@ -247,7 +252,6 @@
             
             <div class="update-controls">
               <button class="btn" id="btn-check-updates">Перевірити оновлення</button>
-              <button class="btn primary" id="btn-download-update" style="display: none;">Завантажити оновлення</button>
             </div>
             
             <div class="update-info">

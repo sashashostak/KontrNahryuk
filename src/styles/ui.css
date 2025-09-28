@@ -435,6 +435,13 @@ textarea.input{ resize: vertical; }
   color: var(--muted);
 }
 
+.progress-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 .update-error {
   border: 1px solid #ff4757;
   border-radius: 8px;

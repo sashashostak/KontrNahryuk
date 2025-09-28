@@ -1,6 +1,7 @@
 {
+  "$schema": "https://json.schemastore.org/package",
   "name": "kontr-nahryuk",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "KontrNahryuk - Ukrainian military document processing application with keyword search and structured output generation",
   "author": "sashashostak",
   "main": "dist/electron/main.js",
@@ -100,7 +101,6 @@
     "electron-packager": "^17.1.2",
     "rcedit": "^4.0.1",
     "sharp": "^0.34.4",
-    "to-ico": "^1.1.5",
     "typescript": "^5.0.0",
     "vite": "^7.1.7",
     "wait-on": "^9.0.1"
@@ -111,8 +111,10 @@
     "docx": "^9.5.1",
     "electron-updater": "^6.1.7",
     "exceljs": "^4.4.0",
+    "icojs": "^0.19.5",
     "mammoth": "^1.11.0",
     "node-fetch": "^2.7.0",
+    "png2icons": "^2.0.1",
     "unzipper": "^0.12.3"
   }
 }

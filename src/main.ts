@@ -61,15 +61,13 @@ async function checkExistingLicense() {
     if (window.api?.checkExistingLicense) {
       const licenseResult = await window.api.checkExistingLicense();
       if (licenseResult?.hasAccess) {
-        console.log('✅ Ліцензійний ключ дійсний');
         return true;
       } else {
-        console.log('❌ Потрібен дійсний ліцензійний ключ');
         return false;
       }
     }
   } catch (error) {
-    console.warn('Помилка перевірки ліцензійного ключа:', error);
+    console.error('Помилка перевірки ліцензійного ключа:', error);
     return false;
   }
   return false;
@@ -288,16 +286,25 @@ class UpdateManager {
   private bindEvents() {
     byId('btn-check-updates')?.addEventListener('click', () => this.checkForUpdates());
 
+    // Автооновлення
+    byId('btn-auto-update')?.addEventListener('click', () => this.downloadAndInstallUpdate());
+    byId('btn-manual-download')?.addEventListener('click', () => this.openDownloadPage());
+    byId('btn-cancel-update')?.addEventListener('click', () => this.cancelUpdate());
+    byId('btn-restart-after-update')?.addEventListener('click', () => this.restartApp());
+
     // Обробка ліцензійного ключа
     byId('btn-set-license')?.addEventListener('click', () => this.setLicenseKey());
     
     // Обробка ліцензійного gate
     byId('gate-license-btn')?.addEventListener('click', () => this.activateLicense());
+
+    // Підписка на події оновлення
+    this.setupUpdateListeners();
   }
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.1.2';
+    if (versionEl) versionEl.textContent = '1.2.0';
   }
 
   private async checkForUpdates() {
@@ -305,12 +312,10 @@ class UpdateManager {
     
     this.isProcessing = true;
     const statusDiv = byId('update-status');
-    const detailsDiv = byId('update-details');
-    const downloadBtn = byId('btn-download-update');
+    const updateAvailableDiv = byId('update-available');
     
     if (statusDiv) statusDiv.textContent = 'Перевіряємо наявність оновлень...';
-    if (detailsDiv) detailsDiv.style.display = 'none';
-    if (downloadBtn) downloadBtn.style.display = 'none';
+    if (updateAvailableDiv) updateAvailableDiv.hidden = true;
 
     try {
       // Використовуємо API через electron main процес для обходу CORS
@@ -329,17 +334,23 @@ class UpdateManager {
       if (hasUpdate && releaseInfo) {
         // Є нове оновлення
         if (statusDiv) statusDiv.textContent = `Доступна нова версія: ${latestVersion}`;
-        if (detailsDiv) {
-          detailsDiv.innerHTML = `
-            <p><strong>Що нового:</strong></p>
-            <p>${releaseInfo.body || 'Дивіться опис релізу на GitHub'}</p>
-            <p><strong>Дата випуску:</strong> ${new Date(releaseInfo.published_at).toLocaleDateString()}</p>
-          `;
-          detailsDiv.style.display = 'block';
-        }
-        if (downloadBtn) {
-          downloadBtn.style.display = 'inline-block';
-          (downloadBtn as HTMLElement).onclick = () => this.openDownloadPage(releaseInfo.html_url);
+        
+        // Показуємо блок з кнопкою оновлення
+        if (updateAvailableDiv) {
+          // Заповнюємо дані про оновлення
+          const newVersionSpan = byId('new-version');
+          const updateDateSpan = byId('update-date');
+          const releasNotesLink = byId<HTMLAnchorElement>('release-notes');
+          
+          if (newVersionSpan) newVersionSpan.textContent = latestVersion;
+          if (updateDateSpan) updateDateSpan.textContent = new Date(releaseInfo.published_at).toLocaleDateString();
+          if (releasNotesLink) releasNotesLink.href = releaseInfo.html_url;
+          
+          // Показуємо блок оновлення
+          updateAvailableDiv.hidden = false;
+          
+          // Зберігаємо інформацію про оновлення для використання пізніше
+          this.currentUpdateInfo = { hasUpdate, latestVersion, releaseInfo };
         }
       } else {
         // Актуальна версія
@@ -352,13 +363,6 @@ class UpdateManager {
       this.isProcessing = false;
     }
   }
-
-  private openDownloadPage(url: string) {
-    // Відкриваємо сторінку релізу в браузері
-    (window as any).api?.openExternal?.(url);
-  }
-
-  // Видалені невикористовувані методи для простоти
 
   private async setLicenseKey(): Promise<void> {
     const input = byId<HTMLInputElement>('license-key-input');
@@ -504,6 +508,174 @@ class UpdateManager {
     
     statusDiv.textContent = message;
     statusDiv.className = `license-status ${state}`;
+  }
+
+  // Нові методи для автооновлення
+  private currentUpdateInfo: any = null;
+
+  private setupUpdateListeners(): void {
+    // Підписка на прогрес оновлення
+    (window as any).api?.onUpdateProgress?.((progress: any) => {
+      this.handleUpdateProgress(progress);
+    });
+
+    // Підписка на зміну статусу оновлення
+    (window as any).api?.onUpdateStateChanged?.((state: string) => {
+      this.handleUpdateStateChange(state);
+    });
+
+    // Підписка на помилки оновлення
+    (window as any).api?.onUpdateError?.((error: string) => {
+      this.handleUpdateError(error);
+    });
+
+    // Підписка на завершення оновлення
+    (window as any).api?.onUpdateComplete?.(() => {
+      this.handleUpdateComplete();
+    });
+  }
+
+  private async downloadAndInstallUpdate(): Promise<void> {
+    if (!this.currentUpdateInfo) {
+      this.showUpdateError('Немає інформації про оновлення');
+      return;
+    }
+
+    try {
+      this.showUpdateProgress('Підготовка до оновлення...');
+      
+      const success = await (window as any).api?.downloadAndInstallUpdate?.(this.currentUpdateInfo);
+      
+      if (!success) {
+        this.showUpdateError('Не вдалося розпочати оновлення');
+      }
+    } catch (error) {
+      console.error('Помилка оновлення:', error);
+      this.showUpdateError('Помилка під час оновлення: ' + error);
+    }
+  }
+
+  private openDownloadPage(): void {
+    if (this.currentUpdateInfo?.releaseInfo?.html_url) {
+      (window as any).api?.openExternal?.(this.currentUpdateInfo.releaseInfo.html_url);
+    }
+  }
+
+  private async cancelUpdate(): Promise<void> {
+    try {
+      await (window as any).api?.cancelUpdate?.();
+      this.hideUpdateProgress();
+      this.showUpdateAvailable(); // Повертаємо до стану "доступне оновлення"
+    } catch (error) {
+      console.error('Помилка скасування оновлення:', error);
+    }
+  }
+
+  private async restartApp(): Promise<void> {
+    try {
+      await (window as any).api?.restartApp?.();
+    } catch (error) {
+      console.error('Помилка перезапуску:', error);
+    }
+  }
+
+  private showUpdateProgress(text: string): void {
+    const progressDiv = byId('update-progress');
+    const progressText = byId('progress-text');
+    const availableDiv = byId('update-available');
+    
+    if (progressDiv) progressDiv.hidden = false;
+    if (progressText) progressText.textContent = text;
+    if (availableDiv) availableDiv.hidden = true;
+  }
+
+  private hideUpdateProgress(): void {
+    const progressDiv = byId('update-progress');
+    if (progressDiv) progressDiv.hidden = true;
+  }
+
+  private showUpdateAvailable(): void {
+    const availableDiv = byId('update-available');
+    const progressDiv = byId('update-progress');
+    
+    if (availableDiv) availableDiv.hidden = false;
+    if (progressDiv) progressDiv.hidden = true;
+  }
+
+  private handleUpdateProgress(progress: any): void {
+    const progressFill = byId('progress-fill');
+    const progressPercent = byId('progress-percent');
+    const progressSpeed = byId('progress-speed');
+    const progressSize = byId('progress-size');
+
+    if (progressFill) {
+      progressFill.style.width = `${progress.percent || 0}%`;
+    }
+    
+    if (progressPercent) {
+      progressPercent.textContent = `${Math.round(progress.percent || 0)}%`;
+    }
+    
+    if (progressSpeed && progress.speedKbps) {
+      progressSpeed.textContent = `${Math.round(progress.speedKbps)} KB/s`;
+    }
+    
+    if (progressSize && progress.bytesReceived && progress.totalBytes) {
+      const receivedMB = (progress.bytesReceived / 1024 / 1024).toFixed(1);
+      const totalMB = (progress.totalBytes / 1024 / 1024).toFixed(1);
+      progressSize.textContent = `${receivedMB} / ${totalMB} MB`;
+    }
+  }
+
+  private handleUpdateStateChange(state: string): void {
+    const progressText = byId('progress-text');
+    const restartBtn = byId('btn-restart-after-update');
+    
+    if (!progressText) return;
+
+    switch (state) {
+      case 'downloading':
+        progressText.textContent = '🐷 Завантажуємо оновлення...';
+        break;
+      case 'verifying':
+        progressText.textContent = '🔍 Перевіряємо цілісність файлів...';
+        break;
+      case 'installing':
+        progressText.textContent = '⚙️ Встановлюємо оновлення...';
+        break;
+      case 'restarting':
+        progressText.textContent = '🔄 Готуємо перезапуск...';
+        if (restartBtn) restartBtn.style.display = 'block';
+        break;
+      case 'uptodate':
+        this.hideUpdateProgress();
+        break;
+      case 'failed':
+        this.showUpdateError('Помилка під час оновлення');
+        break;
+    }
+  }
+
+  private handleUpdateError(error: string): void {
+    this.showUpdateError(error);
+  }
+
+  private handleUpdateComplete(): void {
+    const progressText = byId('progress-text');
+    const restartBtn = byId('btn-restart-after-update');
+    
+    if (progressText) progressText.textContent = '✅ Оновлення встановлено! Натисніть "Перезапустити"';
+    if (restartBtn) restartBtn.style.display = 'block';
+  }
+
+  private showUpdateError(message: string): void {
+    const errorDiv = byId('update-error');
+    const errorMessage = byId('error-message');
+    const progressDiv = byId('update-progress');
+    
+    if (errorDiv) errorDiv.hidden = false;
+    if (errorMessage) errorMessage.textContent = message;
+    if (progressDiv) progressDiv.hidden = true;
   }
 
 

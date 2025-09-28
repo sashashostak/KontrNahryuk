@@ -1,5 +1,5 @@
 const sharp = require('sharp');
-const toIco = require('to-ico');
+const png2icons = require('png2icons');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -10,13 +10,28 @@ async function createIcoFromSvg() {
         const svgPath = path.join(__dirname, '../build/pig-icon.svg');
         const icoPath = path.join(__dirname, '../build/icon.ico');
         
-        // Створюємо PNG файли різних розмірів
-        const sizes = [16, 24, 32, 48, 64, 128, 256];
-        const pngBuffers = [];
+        console.log('🔄 Конвертуємо SVG в ICO...');
         
+        // Створюємо PNG зображення 256x256 для конвертації в ICO
+        const pngBuffer = await sharp(svgPath)
+            .resize(256, 256, {
+                kernel: sharp.kernel.lanczos3,
+                fit: 'contain', 
+                background: { r: 0, g: 0, b: 0, alpha: 0 }
+            })
+            .png()
+            .toBuffer();
+        
+        // Конвертуємо PNG в правильний ICO файл
+        const icoBuffer = png2icons.createICO(pngBuffer, png2icons.BILINEAR, 0, false, true);
+        
+        // Зберігаємо ICO файл
+        await fs.writeFile(icoPath, icoBuffer);
+        
+        // Також створюємо додаткові розміри для різних цілей
+        const sizes = [16, 32, 48, 64, 128];
         for (const size of sizes) {
-            console.log(`📐 Створюємо розмір ${size}x${size}...`);
-            const buffer = await sharp(svgPath)
+            const sizeBuffer = await sharp(svgPath)
                 .resize(size, size, {
                     kernel: sharp.kernel.lanczos3,
                     fit: 'contain',
@@ -25,16 +40,11 @@ async function createIcoFromSvg() {
                 .png()
                 .toBuffer();
             
-            pngBuffers.push(buffer);
+            await fs.writeFile(
+                path.join(__dirname, `../build/icon-${size}.png`),
+                sizeBuffer
+            );
         }
-        
-        console.log('🔄 Конвертуємо PNG в ICO...');
-        
-        // Створюємо ICO файл
-        const icoBuffer = await toIco(pngBuffers);
-        
-        // Зберігаємо ICO файл
-        await fs.writeFile(icoPath, icoBuffer);
         
         console.log('✅ ICO файл створено:', icoPath);
         console.log('🐷 Іконка свинки готова!');

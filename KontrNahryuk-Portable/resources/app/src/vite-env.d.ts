@@ -39,12 +39,17 @@ interface Window {
     }>
     downloadUpdate(manifest: any): Promise<boolean>
     installUpdate(manifest: any): Promise<boolean>
+    downloadAndInstallUpdate(updateInfo: any): Promise<boolean>
+    cancelUpdate(): Promise<boolean>
+    restartApp(): Promise<void>
     getUpdateVersion(): Promise<string>
     getUpdateState(): Promise<string>
     getUpdateProgress(): Promise<any>
     checkExistingLicense(): Promise<any>
     onUpdateStateChanged(callback: (state: string) => void): void
     onUpdateProgress(callback: (progress: any) => void): void
+    onUpdateError(callback: (error: string) => void): void
+    onUpdateComplete(callback: () => void): void
     
     // Batch Processing API
     selectBatchDirectory(): Promise<string | undefined>

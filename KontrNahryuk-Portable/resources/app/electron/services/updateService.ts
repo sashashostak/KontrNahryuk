@@ -82,9 +82,11 @@ class UpdateService extends EventEmitter {
   private licenseKey: string | null = null
   private updateServerUrl: string
   private githubToken: string | null = null
+  private storage: any
   
-  constructor() {
+  constructor(storage: any) {
     super()
+    this.storage = storage
     this.currentVersion = '1.1.2'
     
     // Структура папок для оновлень у %LocalAppData%
@@ -107,11 +109,10 @@ fwIDAQAB
 -----END PUBLIC KEY-----`
     
     this.ensureDirectoryStructure()
-    // Завантажуємо ключ з затримкою, щоб переконатись що storage вже ініціалізовано
-    setTimeout(() => this.loadLicenseKey(), 100)
+    // Ключ завантажується окремо після готовності storage
   }
-
-  // Публічний метод для ініціалізації ліцензії з main процесу
+  
+  // Публічний метод для ініціалізації після готовності storage
   public async initializeLicense(): Promise<void> {
     await this.loadLicenseKey()
   }
@@ -119,33 +120,55 @@ fwIDAQAB
   // Завантаження ліцензійного ключа
   private async loadLicenseKey(): Promise<void> {
     try {
-      const { storage } = require('../main')
-      if (!storage) {
-        this.log('Storage ще не ініціалізовано, повторна спроба через 500ms')
-        setTimeout(() => this.loadLicenseKey(), 500)
+      this.log('🔍 Спроба завантаження ліцензійного ключа з storage...')
+      
+      if (!this.storage) {
+        this.log('⚠️ Storage ще не ініціалізовано')
         return
       }
-      this.licenseKey = await storage?.getSetting('licenseKey') || null
+      
+      this.log(`🔍 Storage доступний, викликаю getSetting('licenseKey')...`)
+      const storedKey = await this.storage.getSetting('licenseKey')
+      this.log(`🔍 Результат getSetting: ${storedKey ? `"${storedKey}"` : 'null/undefined'}`)
+      
+      this.licenseKey = storedKey || null
       if (this.licenseKey) {
-        this.log('Ліцензійний ключ успішно завантажено з storage')
+        this.log(`✅ Ліцензійний ключ успішно завантажено з storage: ${this.licenseKey.substring(0, 8)}...`)
+      } else {
+        this.log('⚠️ Ліцензійний ключ не знайдено в storage (потрібно ввести)')
       }
     } catch (error) {
-      this.log(`Помилка завантаження ліцензійного ключа: ${error}`)
+      this.log(`❌ Помилка завантаження ліцензійного ключа: ${error}`)
     }
   }
 
   // Збереження ліцензійного ключа
   async setLicenseKey(key: string): Promise<UpdateAccessResult> {
     try {
+      this.log(`🔑 Спроба збереження ліцензійного ключа: ${key.substring(0, 8)}...`)
+      
       const accessResult = await this.verifyLicenseKey(key)
+      this.log(`🔍 Результат верифікації: hasAccess=${accessResult.hasAccess}, reason=${accessResult.reason}`)
+      
       if (accessResult.hasAccess) {
         this.licenseKey = key
-        const { storage } = require('../main')
-        await storage?.setSetting('licenseKey', key)
-        this.log('Ліцензійний ключ успішно збережено')
+        this.log('💾 Ключ валідний, зберігаю в storage...')
+        
+        if (!this.storage) {
+          this.log('❌ ПОМИЛКА: storage недоступний!')
+          return { hasAccess: false, reason: 'Storage недоступний' }
+        }
+        
+        await this.storage.setSetting('licenseKey', key)
+        this.log('✅ Ліцензійний ключ успішно збережено в storage')
+        
+        // Перевіримо чи справді збережено
+        const savedKey = await this.storage.getSetting('licenseKey')
+        this.log(`🔍 Перевірка збереження: збережено "${savedKey ? savedKey.substring(0, 8) + '...' : 'null'}"`)
+        
         return accessResult
       } else {
-        this.log(`Недійсний ліцензійний ключ: ${accessResult.reason}`)
+        this.log(`❌ Недійсний ліцензійний ключ: ${accessResult.reason}`)
         return accessResult
       }
     } catch (error) {
@@ -159,23 +182,37 @@ fwIDAQAB
 
   // Перевірка доступу до оновлень
   public async checkUpdateAccess(): Promise<UpdateAccessResult> {
+    this.log(`🔍 checkUpdateAccess: licenseKey = ${this.licenseKey ? this.licenseKey.substring(0, 8) + '...' : 'null'}`)
+    
     if (!this.licenseKey) {
+      this.log('❌ checkUpdateAccess: ключ відсутній')
       return {
         hasAccess: false,
         reason: 'Відсутній ліцензійний ключ. Введіть ключ для отримання оновлень.'
       }
     }
 
-    return await this.verifyLicenseKey(this.licenseKey)
+    this.log(`🔍 checkUpdateAccess: перевіряю ключ "${this.licenseKey}"`)
+    const result = await this.verifyLicenseKey(this.licenseKey)
+    this.log(`🔍 checkUpdateAccess: результат валідації - hasAccess=${result.hasAccess}, reason=${result.reason}`)
+    return result
   }
 
   // Верифікація ліцензійного ключа на сервері
   private async verifyLicenseKey(key: string): Promise<UpdateAccessResult> {
     try {
-      // Один універсальний ключ для всіх користувачів
-      const MASTER_KEY = 'KONTR-NAHRYUK-2024'
+      // Допустимі ліцензійні ключі
+      const VALID_KEYS = [
+        'KONTR-NAHRYUK-2024',
+        'KONTR-NAHRYUK-2024-PREMIUM',
+        'KONTR-NAHRYUK-PRO', 
+        'KONTR-NAHRYUK-ENTERPRISE'
+      ]
 
-      if (key === MASTER_KEY) {
+      // Строга перевірка - тільки точна відповідність з допустимого списку
+      const isValidKey = VALID_KEYS.includes(key.trim().toUpperCase())
+
+      if (isValidKey) {
         return {
           hasAccess: true,
           licenseInfo: {
@@ -188,7 +225,7 @@ fwIDAQAB
       } else {
         return {
           hasAccess: false,
-          reason: 'Недійсний ліцензійний ключ. Використовуйте: KONTR-NAHRYUK-2024'
+          reason: 'Потрібен дійсний ліцензійний ключ'
         }
       }
 

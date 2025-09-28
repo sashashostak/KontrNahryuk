@@ -77,29 +77,11 @@ async function updatePortableSimple() {
                 // Автоматично змінюємо іконку на свинку
                 console.log('🐷 Оновлюємо іконку на свинку...');
                 const iconPath = path.join(__dirname, '../build/icon.ico');
-                const rceditPath = path.join(__dirname, '../node_modules/rcedit/bin/rcedit.exe');
                 
                 try {
-                    const rceditProcess = spawn(rceditPath, [exePath, '--set-icon', iconPath], {
-                        stdio: 'inherit'
-                    });
-                    
-                    await new Promise((resolve, reject) => {
-                        rceditProcess.on('close', (code) => {
-                            if (code === 0) {
-                                console.log('✅ Іконка свинки встановлена!');
-                                resolve(true);
-                            } else {
-                                console.log(`⚠️ Помилка зміни іконки (код ${code})`);
-                                resolve(false);
-                            }
-                        });
-                        
-                        rceditProcess.on('error', (error) => {
-                            console.log('⚠️ Не вдалося змінити іконку:', error.message);
-                            resolve(false);
-                        });
-                    });
+                    const rcedit = require('rcedit');
+                    await rcedit(exePath, { icon: iconPath });
+                    console.log('✅ Іконка свинки встановлена!');
                 } catch (iconError) {
                     console.log('⚠️ Помилка з іконкою:', iconError.message);
                 }

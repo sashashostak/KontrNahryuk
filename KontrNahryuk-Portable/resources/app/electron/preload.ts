@@ -31,6 +31,9 @@ interface ElectronAPI {
   checkForUpdates(): Promise<any>
   downloadUpdate(manifest: any): Promise<boolean>
   installUpdate(manifest: any): Promise<boolean>
+  downloadAndInstallUpdate(updateInfo: any): Promise<boolean>
+  cancelUpdate(): Promise<boolean>
+  restartApp(): Promise<void>
   getUpdateVersion(): Promise<string>
   getUpdateState(): Promise<string>
   getUpdateProgress(): Promise<any>
@@ -40,6 +43,8 @@ interface ElectronAPI {
   checkExistingLicense(): Promise<any>
   onUpdateStateChanged(callback: (state: string) => void): void
   onUpdateProgress(callback: (progress: any) => void): void
+  onUpdateError(callback: (error: string) => void): void
+  onUpdateComplete(callback: () => void): void
   
   // Batch Processing API
   selectBatchDirectory(): Promise<string | undefined>
@@ -70,6 +75,9 @@ contextBridge.exposeInMainWorld('api', {
   checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updates:check-github'),
   downloadUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:download', manifest),
   installUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:install', manifest),
+  downloadAndInstallUpdate: (updateInfo: any): Promise<boolean> => ipcRenderer.invoke('updates:download-and-install', updateInfo),
+  cancelUpdate: (): Promise<boolean> => ipcRenderer.invoke('updates:cancel'),
+  restartApp: (): Promise<void> => ipcRenderer.invoke('updates:restart-app'),
   getUpdateVersion: (): Promise<string> => ipcRenderer.invoke('updates:get-version'),
   getUpdateState: (): Promise<string> => ipcRenderer.invoke('updates:get-state'),
   getUpdateProgress: (): Promise<any> => ipcRenderer.invoke('updates:get-progress'),
@@ -82,6 +90,12 @@ contextBridge.exposeInMainWorld('api', {
   },
   onUpdateProgress: (callback: (progress: any) => void): void => {
     ipcRenderer.on('updates:download-progress', (_, progress) => callback(progress))
+  },
+  onUpdateError: (callback: (error: string) => void): void => {
+    ipcRenderer.on('updates:error', (_, error) => callback(error))
+  },
+  onUpdateComplete: (callback: () => void): void => {
+    ipcRenderer.on('updates:complete', () => callback())
   },
 
   // Batch Processing API

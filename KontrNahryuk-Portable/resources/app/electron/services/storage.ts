@@ -19,6 +19,7 @@ export interface Storage {
 class JSONStorage implements Storage {
   private filePath: string
   private data: DBData = { settings: {}, notes: [] }
+  private isInitialized: boolean = false
   
   constructor(file: string) {
     this.filePath = file
@@ -34,6 +35,7 @@ class JSONStorage implements Storage {
       this.data = { settings: {}, notes: [] }
       await this.save()
     }
+    this.isInitialized = true
   }
   
   private async save() {
@@ -41,10 +43,21 @@ class JSONStorage implements Storage {
   }
   
   async getSetting<T>(key: string, fallback?: T): Promise<T> {
-    return (this.data.settings[key] as T) ?? (fallback as T)
+    // Чекаємо поки завершиться ініціалізація
+    while (!this.isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    
+    const value = (this.data.settings[key] as T) ?? (fallback as T)
+    return value
   }
   
   async setSetting<T>(key: string, value: T): Promise<void> {
+    // Чекаємо поки завершиться ініціалізація
+    while (!this.isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    
     this.data.settings[key] = value
     await this.save()
   }
@@ -66,10 +79,9 @@ class JSONStorage implements Storage {
   }
 }
 
-export function createStorage(): Storage {
+export function createStorage(): JSONStorage {
   const dataDir = app.getPath('userData')
-  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
-
   const jsonPath = path.join(dataDir, 'db.json')
+  
   return new JSONStorage(jsonPath)
 }

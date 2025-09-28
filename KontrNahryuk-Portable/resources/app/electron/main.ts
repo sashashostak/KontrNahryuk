@@ -41,6 +41,13 @@ function createWindow(): BrowserWindow {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  // Додаємо можливість відкрити DevTools в продакшн режимі (F12)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools()
+    }
+  })
   
   return mainWindow
 }
@@ -120,7 +127,58 @@ function setupUpdateHandlers() {
     return await updateService.checkForUpdatesViaGitHub()
   })
 
+  // Автооновлення - завантаження і встановлення
+  ipcMain.handle('updates:download-and-install', async (_, updateInfo) => {
+    try {
+      const manifest = updateInfo.releaseInfo?.assets?.[0]
+      if (!manifest) {
+        throw new Error('Не знайдено файлів для завантаження')
+      }
 
+      // Спочатку завантажуємо
+      const downloadSuccess = await updateService.downloadUpdate(manifest)
+      if (!downloadSuccess) {
+        throw new Error('Не вдалося завантажити оновлення')
+      }
+
+      // Потім встановлюємо
+      const installSuccess = await updateService.installUpdate(manifest)
+      if (!installSuccess) {
+        throw new Error('Не вдалося встановити оновлення')
+      }
+
+      return true
+    } catch (error) {
+      console.error('Помилка автооновлення:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('updates:error', errorMessage)
+      })
+      return false
+    }
+  })
+
+  // Скасування оновлення
+  ipcMain.handle('updates:cancel', async () => {
+    try {
+      // Тут можна додати логіку для скасування завантаження
+      // Поки що просто повертаємо true
+      return true
+    } catch (error) {
+      console.error('Помилка скасування оновлення:', error)
+      return false
+    }
+  })
+
+  // Перезапуск додатка
+  ipcMain.handle('updates:restart-app', async () => {
+    try {
+      app.relaunch()
+      app.exit(0)
+    } catch (error) {
+      console.error('Помилка перезапуску:', error)
+    }
+  })
 
   // Пересилання подій оновлення до рендера
   updateService.on('state-changed', (state) => {
@@ -132,6 +190,19 @@ function setupUpdateHandlers() {
   updateService.on('download-progress', (progress) => {
     BrowserWindow.getAllWindows().forEach(window => {
       window.webContents.send('updates:download-progress', progress)
+    })
+  })
+
+  // Додаткові події для завершення оновлення
+  updateService.on('update-complete', () => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('updates:complete')
+    })
+  })
+
+  updateService.on('update-error', (error) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('updates:error', error)
     })
   })
 }
@@ -216,11 +287,15 @@ function setupBatchProcessing() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   storage = createStorage()
-  updateService = new UpdateService()
-  // Переконуємося що updateService ініціалізує ліцензійний ключ після storage
-  setTimeout(() => updateService.initializeLicense(), 200)
+  updateService = new UpdateService(storage)
+  
+  // Даємо час storage ініціалізуватись та ініціалізуємо ліцензію
+  setTimeout(async () => {
+    await updateService.initializeLicense()
+  }, 200)
+  
   setupUpdateHandlers()
   setupBatchProcessing()
   setupOSIntegration(); 
