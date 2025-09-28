@@ -453,7 +453,7 @@ class UpdateManager {
 
   private async loadCurrentVersion() {
     const versionEl = byId('current-version');
-    if (versionEl) versionEl.textContent = '1.2.3';
+    if (versionEl) versionEl.textContent = '1.2.4';
   }
 
   private async checkForUpdates() {

@@ -87,7 +87,7 @@ class UpdateService extends EventEmitter {
   constructor(storage: any) {
     super()
     this.storage = storage
-    this.currentVersion = '1.2.3'
+    this.currentVersion = '1.2.4'
     
     // Структура папок для оновлень у %LocalAppData%
     const localAppData = process.env.LOCALAPPDATA || process.env.APPDATA || ''

@@ -502,24 +502,18 @@ export class UkrainianNameDeclension {
   }
 
   /**
-   * Знайти збіг імені в тексті (гнучка версія) - достатньо знайти частину імені
+   * Знайти збіг імені в тексті (більш строга версія) - потрібно знайти всі частини імені
    */
   public static findNameMatch(text: string, targetName: string): boolean {
     const targetForms = this.getAllFormsOfName(targetName);
     const textLower = text.toLowerCase();
     
-    // Спробувати знайти повне співпадіння спочатку
+    // Спробувати знайти точний збіг для кожної форми
     for (const form of targetForms) {
-      const words = form.split(' ').filter(w => w.length >= 3);
+      const words = form.split(' ').filter(w => w.length >= 2); // Зменшуємо мінімум до 2 символів
       
-      // Якщо всі слова знайдені - це ідеальний збіг
+      // Якщо всі слова форми знайдені в тексті - це точний збіг
       if (words.length > 0 && words.every(word => textLower.includes(word.toLowerCase()))) {
-        return true;
-      }
-      
-      // Якщо знайдено хоча б 2 слова з 3+ або 1 слово якщо воно довше 4 символів
-      const foundWords = words.filter(word => textLower.includes(word.toLowerCase()));
-      if (foundWords.length >= 2 || (foundWords.length >= 1 && foundWords[0].length > 4)) {
         return true;
       }
     }
@@ -562,8 +556,8 @@ export class UkrainianNameDeclension {
         matchRatio
       });
       
-      // Умови для позитивного результату
-      if (matchedWords.length >= 2 || (matchedWords.length >= 1 && matchedWords[0].length > 4)) {
+      // Умови для позитивного результату - потрібно знайти ВСІ слова
+      if (words.length > 0 && matchedWords.length === words.length) {
         found = true;
       }
     }
