@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон -->
+  <rect width="256" height="256" rx="32" fill="#FFB6C1"/>
+  
+  <!-- Тіло свинки -->
+  <ellipse cx="128" cy="140" rx="85" ry="65" fill="#FFC0CB"/>
+  
+  <!-- Голова свинки -->
+  <circle cx="128" cy="90" r="50" fill="#FFC0CB"/>
+  
+  <!-- Вуха -->
+  <ellipse cx="105" cy="65" rx="12" ry="20" fill="#FFB6C1" transform="rotate(-30 105 65)"/>
+  <ellipse cx="151" cy="65" rx="12" ry="20" fill="#FFB6C1" transform="rotate(30 151 65)"/>
+  
+  <!-- Очі -->
+  <circle cx="115" cy="80" r="8" fill="white"/>
+  <circle cx="141" cy="80" r="8" fill="white"/>
+  <circle cx="117" cy="78" r="4" fill="black"/>
+  <circle cx="143" cy="78" r="4" fill="black"/>
+  
+  <!-- П'ятачок -->
+  <ellipse cx="128" cy="100" rx="15" ry="10" fill="#FF69B4"/>
+  <circle cx="123" cy="98" r="2" fill="#8B0000"/>
+  <circle cx="133" cy="98" r="2" fill="#8B0000"/>
+  
+  <!-- Рот -->
+  <path d="M118 110 Q128 115 138 110" fill="none" stroke="#8B0000" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Ноги -->
+  <ellipse cx="95" cy="190" rx="8" ry="15" fill="#FFB6C1"/>
+  <ellipse cx="115" cy="195" rx="8" ry="15" fill="#FFB6C1"/>
+  <ellipse cx="141" cy="195" rx="8" ry="15" fill="#FFB6C1"/>
+  <ellipse cx="161" cy="190" rx="8" ry="15" fill="#FFB6C1"/>
+  
+  <!-- Копитця -->
+  <ellipse cx="95" cy="205" rx="6" ry="8" fill="#8B4513"/>
+  <ellipse cx="115" cy="210" rx="6" ry="8" fill="#8B4513"/>
+  <ellipse cx="141" cy="210" rx="6" ry="8" fill="#8B4513"/>
+  <ellipse cx="161" cy="205" rx="6" ry="8" fill="#8B4513"/>
+  
+  <!-- Хвостик -->
+  <path d="M200 130 Q215 125 210 140 Q205 155 220 150" fill="none" stroke="#FFB6C1" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Документи на животі (символ роботи) -->
+  <rect x="108" y="125" width="40" height="30" rx="3" fill="white" stroke="#666" stroke-width="1"/>
+  <line x1="112" y1="132" x2="144" y2="132" stroke="#666" stroke-width="1"/>
+  <line x1="112" y1="138" x2="140" y2="138" stroke="#666" stroke-width="1"/>
+  <line x1="112" y1="144" x2="144" y2="144" stroke="#666" stroke-width="1"/>
+  
+  <!-- Корона (символ важливості) -->
+  <path d="M110 45 L120 35 L128 40 L136 35 L146 45 L140 55 L116 55 Z" fill="#FFD700" stroke="#FF8C00" stroke-width="1"/>
+  <circle cx="120" cy="45" r="2" fill="#FF0000"/>
+  <circle cx="128" cy="42" r="2" fill="#FF0000"/>
+  <circle cx="136" cy="45" r="2" fill="#FF0000"/>
+</svg>

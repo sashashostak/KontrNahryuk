@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон -->
+  <rect width="256" height="256" rx="32" fill="#0057B8"/>
+  
+  <!-- Жовта частина прапора -->
+  <rect x="0" y="128" width="256" height="128" rx="0 0 32 32" fill="#FFD700"/>
+  
+  <!-- Документ -->
+  <rect x="64" y="48" width="128" height="160" rx="8" fill="white" stroke="#333" stroke-width="2"/>
+  
+  <!-- Лінії тексту -->
+  <rect x="80" y="80" width="96" height="4" rx="2" fill="#666"/>
+  <rect x="80" y="96" width="80" height="4" rx="2" fill="#666"/>
+  <rect x="80" y="112" width="88" height="4" rx="2" fill="#666"/>
+  <rect x="80" y="128" width="72" height="4" rx="2" fill="#666"/>
+  
+  <!-- Символ зірки (військовий) -->
+  <polygon points="128,144 134,156 148,156 138,166 142,178 128,170 114,178 118,166 108,156 122,156" 
+           fill="#0057B8" stroke="#333" stroke-width="1"/>
+  
+  <!-- Шестерня (обробка) -->
+  <circle cx="160" cy="180" r="16" fill="none" stroke="#FFD700" stroke-width="3"/>
+  <circle cx="160" cy="180" r="6" fill="#FFD700"/>
+  <rect x="154" y="164" width="12" height="4" fill="#FFD700"/>
+  <rect x="154" y="192" width="12" height="4" fill="#FFD700"/>
+  <rect x="172" y="174" width="4" height="12" fill="#FFD700"/>
+  <rect x="144" y="174" width="4" height="12" fill="#FFD700"/>
+</svg>
