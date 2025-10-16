@@ -169,6 +169,17 @@ scripts/node_modules/
 
 # Testing files  
 test-*/
+test-*.js
+test-*.ts
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Test data
+test-data/
+test-batch-data/
+__tests__/
 
 # Portable builds
 *-Portable/
