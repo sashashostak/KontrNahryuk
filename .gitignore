@@ -153,9 +153,23 @@ KontrNahryuk-v*.zip
 # Build outputs
 release/
 dist/
+out/
+build/
+*.app
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+
+# Electron builder outputs
+dist-electron/
 
 # Development files
 scripts/node_modules/
 
 # Testing files  
 test-*/
+
+# Portable builds
+*-Portable/
+KontrNahryuk-Portable/
