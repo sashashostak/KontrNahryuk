@@ -9,7 +9,7 @@
  * - Форматування з timestamp
  */
 
-import { byId } from '../utils/helpers';
+import { byId } from '../helpers';
 
 export class LoggerService {
   private logElement: HTMLElement | null;
