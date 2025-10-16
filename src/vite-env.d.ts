@@ -55,6 +55,7 @@ interface Window {
     selectBatchDirectory(): Promise<string | undefined>
     selectBatchOutputFile(): Promise<string | undefined>
     selectExcelFile(): Promise<string | undefined>
+    scanExcelFiles(folderPath: string): Promise<string[]>
     startBatchProcessing(options: any): Promise<any>
     cancelBatchProcessing(): Promise<boolean>
     isBatchRunning(): Promise<boolean>
@@ -62,8 +63,8 @@ interface Window {
     onBatchLog(callback: (logEntry: { level: string, message: string }) => void): void
     onBatchComplete(callback: (result: any) => void): void
     
-    chooseSavePath(suggestName?: string): Promise<string | null>
-    selectFolder(): Promise<{ filePath: string } | null>
+    chooseSavePath(suggestName?: string): Promise<string | undefined>
+    selectFolder(): Promise<{ filePath: string } | undefined>
     processOrder(payload: OrderProcessPayload): Promise<{
       ok: boolean
       out?: string

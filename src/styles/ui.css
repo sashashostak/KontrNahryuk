@@ -1263,6 +1263,11 @@ textarea.input::placeholder {
   border-radius: 8px;
 }
 
+/* Тимчасово приховуємо область знайдених файлів */
+#excel-files-preview {
+  display: none !important;
+}
+
 .files-preview h5 {
   margin: 0 0 12px 0;
   font-size: 14px;

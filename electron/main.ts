@@ -55,21 +55,6 @@ function createWindow(): BrowserWindow {
 }
 
 function setupUpdateHandlers() {
-  // Перевірка оновлень
-  ipcMain.handle('updates:check', async () => {
-    try {
-      const result = await updateService.checkForUpdates()
-      return result
-    } catch (error) {
-      console.error('Помилка перевірки оновлень:', error)
-      return { 
-        state: UpdateState.Failed, 
-        error: error instanceof Error ? error.message : 'Невідома помилка',
-        currentVersion: updateService.getCurrentVersion()
-      }
-    }
-  })
-
   // Завантаження оновлення
   ipcMain.handle('updates:download', async (_, manifest) => {
     try {
@@ -355,6 +340,29 @@ function setupBatchProcessing() {
       properties: ['openFile']
     })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  // Сканування Excel файлів у папці
+  ipcMain.handle('batch:scan-excel-files', async (event, folderPath: string) => {
+    const fs = require('fs')
+    const path = require('path')
+    
+    try {
+      if (!fs.existsSync(folderPath)) {
+        return []
+      }
+      
+      const files = fs.readdirSync(folderPath)
+      const excelFiles = files.filter((file: string) => {
+        const ext = path.extname(file).toLowerCase()
+        return ext === '.xlsx' || ext === '.xls'
+      })
+      
+      return excelFiles
+    } catch (error) {
+      console.error('Помилка сканування файлів:', error)
+      return []
+    }
   })
 }
 

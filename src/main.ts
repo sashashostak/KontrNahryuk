@@ -240,7 +240,7 @@ async function refreshNotes() {
     `<li><span style="opacity:.7;font-size:12px">${new Date(n.createdAt).toLocaleString()}</span> — ${n.text}</li>`
   ).join('');
 }
-byId<HTMLButtonElement>('note-add')?.addEventListener('click', async () => {
+byId<HTMLButtonElement>('btn-add-note')?.addEventListener('click', async () => {
   const input = byId<HTMLInputElement>('note-input');
   if (!input || !input.value.trim()) return;
   await window.api?.addNote?.(input.value.trim());
@@ -1594,6 +1594,7 @@ class ExcelProcessor {
         if (result?.filePath) {
           this.inputFolder = result.filePath;
           inputFolderField!.value = result.filePath;
+          
           await this.scanForExcelFiles();
           this.updateProcessButton();
           this.log(`📂 Обрана папка: ${result.filePath}`);
@@ -1677,48 +1678,46 @@ class ExcelProcessor {
 
   private async scanForExcelFiles() {
     try {
-      // Отримуємо налаштування обробки
-      const sliceCheck = byId<HTMLInputElement>('excel-slice-check')?.checked || false;
-      const mismatches = byId<HTMLInputElement>('excel-mismatches')?.checked || false;
-      const sanitizer = byId<HTMLInputElement>('excel-sanitizer')?.checked || false;
+      if (!this.inputFolder) {
+        this.log(`⚠️ Папка не вибрана`, 'error');
+        return;
+      }
+
+      this.log(`� Сканування папки: ${this.inputFolder}`);
+
+      // Викликаємо API для сканування Excel файлів
+      const foundFiles = await window.api?.scanExcelFiles?.(this.inputFolder);
       
-      this.log(`🔧 Налаштування: Slice_Check=${sliceCheck}, Mismatches=${mismatches}, Sanitizer=${sanitizer}`);
+      if (foundFiles && foundFiles.length > 0) {
+        this.foundFiles = foundFiles;
+        this.displayFoundFiles();
+        this.log(`✅ Знайдено ${this.foundFiles.length} Excel файлів`);
+      } else {
+        this.foundFiles = [];
+        this.displayFoundFiles();
+        this.log(`ℹ️ Excel файли не знайдено в обраній папці`);
+      }
       
-      // Тут би був виклик до electron для сканування файлів
-      // Поки що емулюємо знаходження файлів
-      const mockFiles = [
-        'Звіт_грудень_2023.xlsx',
-        'Звіт_листопад_2023.xlsx', 
-        'Звіт_лютий_2024.xlsx',
-        'Звіт_січень_2024.xlsx'
-      ];
-      
-      this.foundFiles = mockFiles;
-      this.displayFoundFiles();
-      
-      this.log(`🔍 Знайдено ${this.foundFiles.length} Excel файлів`);
+      this.updateProcessButton();
     } catch (error) {
       this.log(`❌ Помилка сканування файлів: ${error}`, 'error');
+      this.foundFiles = [];
+      this.displayFoundFiles();
     }
   }
 
   private displayFoundFiles() {
+    // Приховуємо область знайдених файлів (тимчасово відключено)
     const filesPreview = byId('excel-files-preview');
-    const filesList = byId('excel-files-list');
-    
-    if (this.foundFiles.length > 0) {
-      filesPreview!.style.display = 'block';
-      filesList!.innerHTML = this.foundFiles.map(file => 
-        `<div class="file-item">${file}</div>`
-      ).join('');
-    } else {
-      filesPreview!.style.display = 'none';
+    if (filesPreview) {
+      filesPreview.style.display = 'none';
     }
   }
 
   private updateProcessButton() {
     const startBtn = byId<HTMLButtonElement>('excel-start-processing');
-    const canProcess = this.inputFolder && this.destinationFile && this.foundFiles.length > 0 && !this.isProcessing;
+    // Не перевіряємо foundFiles.length, оскільки область файлів прихована
+    const canProcess = this.inputFolder && this.destinationFile && !this.isProcessing;
     
     if (startBtn) {
       startBtn.disabled = !canProcess;
