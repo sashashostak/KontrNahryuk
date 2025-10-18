@@ -1,12 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "kontr-nahryuk",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "KontrNahryuk - Ukrainian military document processing application with keyword search and structured output generation",
   "author": "sashashostak",
   "main": "dist/electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"vite --port 5177\" \"wait-on http://localhost:5177 && electron . --dev\"",
+    "dev": "npm run build:main && concurrently -k \"vite --port 5177\" \"wait-on http://localhost:5177 && electron . --dev\"",
     "build:renderer": "vite build",
     "build:main": "tsc -p electron/tsconfig.json",
     "build": "npm run build:renderer && npm run build:main",

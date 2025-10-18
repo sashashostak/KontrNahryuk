@@ -18,6 +18,20 @@
  * @version 2.0.0 - Refactored version
  */
 
+// === AUTOFILL ERRORS SUPPRESSION ===
+// FIXED: Приховуємо DevTools Autofill помилки, які не критичні для Electron
+(function suppressAutofillErrors() {
+  const originalError = console.error;
+  console.error = function(...args: any[]) {
+    const msg = args[0]?.toString() || '';
+    // Ігноруємо тільки Autofill помилки
+    if (msg.includes('Autofill.enable') || msg.includes('Autofill.setAddresses')) {
+      return;
+    }
+    originalError.apply(console, args);
+  };
+})();
+
 // === IMPORTS ===
 
 // Types and constants
@@ -36,6 +50,7 @@ import { ExcelProcessor } from './ExcelProcessor';
 import { ThemeService } from './services/ThemeService';
 import { SettingsManager } from './services/SettingsManager';
 import { NavigationService } from './services/NavigationService';
+import { UILoggerService } from './services/UILoggerService';
 
 // Utils
 import { initializeFilePickers } from './filePicker';
@@ -51,6 +66,7 @@ let excelProcessor: ExcelProcessor;
 let themeService: ThemeService;
 let settingsManager: SettingsManager;
 let navigationService: NavigationService;
+let uiLoggerService: UILoggerService;
 
 // === SETTINGS MANAGEMENT ===
 
@@ -142,6 +158,10 @@ async function initializeManagers(): Promise<void> {
     navigationService = new NavigationService();
     log('✅ NavigationService ініціалізовано');
 
+    // Ініціалізуємо UILoggerService для відображення логів в UI
+    uiLoggerService = new UILoggerService();
+    log('✅ UILoggerService ініціалізовано');
+
     // 2. Ініціалізуємо менеджери основного функціоналу
     sectionManager = new SectionManager();
     log('✅ SectionManager ініціалізовано');
@@ -190,6 +210,172 @@ function setupGlobalEventListeners(): void {
     }
   });
 
+  // Кнопки topbar
+  byId('btn-notify')?.addEventListener('click', async () => {
+    await window.api?.notify?.('Test', 'This is a test notification');
+  });
+
+  byId('btn-docs')?.addEventListener('click', async () => {
+    await window.api?.openExternal?.('https://github.com/sashashostak/KontrNahryuk');
+  });
+
+  // Кнопка обробки наказу (Functions)
+  byId('btn-process-order')?.addEventListener('click', async () => {
+    try {
+      log('🚀 Початок обробки наказу...');
+      
+      // 1. Отримання значень з форми
+      const sourceType = document.querySelector<HTMLInputElement>('input[name="source-type"]:checked')?.value || 'single-file';
+      const resultPath = byId<HTMLInputElement>('result-path')?.value;
+      const is2BSP = byId<HTMLInputElement>('t-2bsp')?.checked || false;
+      const isOrder = byId<HTMLInputElement>('t-order')?.checked || false;
+      const autoOpen = byId<HTMLInputElement>('t-autopen')?.checked || false;
+      const excelPath = byId<HTMLInputElement>('excel-path')?.value;
+      
+      // 2. Перевірка обов'язкових полів
+      if (!resultPath) {
+        log('❌ Помилка: Оберіть місце збереження результату');
+        await window.api?.notify?.('Помилка', 'Оберіть місце збереження результату');
+        return;
+      }
+      
+      // 3. Отримання вибраного Word файлу
+      let wordFile: File | undefined;
+      
+      if (sourceType === 'single-file') {
+        const fileInput = byId<HTMLInputElement>('word-file');
+        wordFile = fileInput?.files?.[0];
+        if (!wordFile) {
+          log('❌ Помилка: Оберіть Word файл');
+          await window.api?.notify?.('Помилка', 'Оберіть Word файл');
+          return;
+        }
+      } else if (sourceType === 'multiple-files') {
+        const fileInput = byId<HTMLInputElement>('word-files');
+        wordFile = fileInput?.files?.[0];
+        if (!wordFile) {
+          log('❌ Помилка: Оберіть хоча б один Word файл');
+          await window.api?.notify?.('Помилка', 'Оберіть Word файли');
+          return;
+        }
+      } else if (sourceType === 'folder') {
+        log('❌ Режим папки поки не підтримується');
+        await window.api?.notify?.('Помилка', 'Режим папки поки не реалізований');
+        return;
+      }
+      
+      if (!wordFile) {
+        log('❌ Помилка: Не вдалося отримати Word файл');
+        return;
+      }
+      
+      log(`📂 Обробка файлу: ${wordFile.name}`);
+      
+      // 4. Читання файлу як ArrayBuffer через FileReader
+      log('📖 Читання Word файлу...');
+      const fileBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as ArrayBuffer);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(wordFile);
+      });
+      
+      if (!fileBuffer) {
+        log('❌ Помилка: Не вдалося прочитати файл');
+        await window.api?.notify?.('Помилка', 'Не вдалося прочитати Word файл');
+        return;
+      }
+      
+      // 5. Підготовка payload для processOrder
+      const payload = {
+        wordBuf: fileBuffer,
+        outputPath: resultPath,
+        excelPath: isOrder && excelPath ? excelPath : undefined,
+        flags: {
+          saveDBPath: false,
+          is2BSP: is2BSP,
+          isOrder: isOrder,
+          tokens: false,
+          autoOpen: autoOpen
+        },
+        mode: is2BSP ? '2BSP' : (isOrder ? 'order' : 'default')
+      };
+      
+      // Очищуємо логи перед початком обробки
+      uiLoggerService.clear();
+      
+      log('⚙️ Обробка наказу...');
+      
+      // 6. Виклик API
+      const result = await window.api?.processOrder?.(payload);
+      
+      // 7. Обробка результату
+      if (result?.ok) {
+        const stats = result.stats as { tokens?: number; paragraphs?: number; matched?: number; totalDocuments?: number } | undefined;
+        log(`✅ Наказ успішно оброблено!`);
+        
+        // Показати статистику
+        if (stats?.totalDocuments) {
+          log(`📊 Створено документів: ${stats.totalDocuments}`);
+          log(`📊 Знайдено збігів: ${stats?.matched || 0}`);
+        } else {
+          log(`📊 Статистика: параграфів - ${stats?.paragraphs || 0}, знайдено - ${stats?.matched || 0}`);
+        }
+        
+        if (result.out) {
+          log(`💾 Результат збережено: ${result.out}`);
+        }
+        
+        // Повідомлення про успіх
+        const matchCount = stats?.matched || 0;
+        await window.api?.notify?.('Успіх', `Наказ оброблено! Знайдено збігів: ${matchCount}`);
+        
+        // Автовідкриття вже реалізоване в electron/main.ts
+        // Не потрібно викликати openExternal тут
+        
+      } else {
+        const errorMsg = result?.error || 'Невідома помилка';
+        log(`❌ Помилка обробки: ${errorMsg}`);
+        await window.api?.notify?.('Помилка', errorMsg);
+      }
+      
+    } catch (error) {
+      log(`❌ Критична помилка: ${error}`);
+      console.error('Помилка обробки наказу:', error);
+      await window.api?.notify?.('Помилка', `Помилка: ${error}`);
+    }
+  });
+
+  // Кнопка додавання нотатки (Notes)
+  byId('btn-add-note')?.addEventListener('click', async () => {
+    const noteInput = byId<HTMLTextAreaElement>('note-input');
+    const notesList = byId('notes-list');
+    
+    if (!noteInput?.value?.trim()) {
+      log('⚠️ Нотатка порожня');
+      return;
+    }
+    
+    // Створення елемента нотатки
+    const noteItem = document.createElement('li');
+    noteItem.textContent = noteInput.value;
+    noteItem.style.cssText = 'padding: 8px; margin: 4px 0; background: var(--panel); border-radius: 4px;';
+    
+    // Додавання кнопки видалення
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '✕';
+    deleteBtn.className = 'btn ghost small';
+    deleteBtn.style.cssText = 'margin-left: 8px; float: right;';
+    deleteBtn.onclick = () => noteItem.remove();
+    
+    noteItem.appendChild(deleteBtn);
+    notesList?.appendChild(noteItem);
+    
+    // Очищення поля вводу
+    noteInput.value = '';
+    log('📝 Нотатку додано');
+  });
+
   // Кнопка перевірки оновлень
   byId('btn-check-updates')?.addEventListener('click', async () => {
     await updateManager.checkForUpdates();
@@ -217,15 +403,15 @@ async function initializeApp(): Promise<void> {
   try {
     log('🐷 KontrNahryuk v1.3.0 - Завантаження...');
 
-    // 1. Перевірка ліцензії (блокуючий крок)
+    // 1. Ініціалізація менеджерів (СПОЧАТКУ створюємо об'єкти)
+    await initializeManagers();
+
+    // 2. Перевірка ліцензії (блокуючий крок, ПІСЛЯ створення licenseManager)
     await licenseManager?.checkLicenseOnStartup?.();
 
-    // 2. Завантаження основних налаштувань
+    // 3. Завантаження основних налаштувань
     await loadSettings();
     setupSettingsAutoSave();
-
-    // 3. Ініціалізація менеджерів
-    await initializeManagers();
 
     // 4. Налаштування глобальних обробників
     setupGlobalEventListeners();

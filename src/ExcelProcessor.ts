@@ -83,26 +83,26 @@ export class ExcelProcessor {
       }
     });
 
-    // Початок обробки
-    const startBtn = byId('excel-start-processing');
+    // Початок обробки (виправлено ID)
+    const startBtn = byId('excel-process-btn');
     startBtn?.addEventListener('click', () => {
       this.startSummarizationProcessing();
     });
 
-    // Зупинка обробки
-    const stopBtn = byId('excel-stop-processing');
+    // Зупинка обробки (виправлено ID)
+    const stopBtn = byId('excel-cancel-btn');
     stopBtn?.addEventListener('click', () => {
       this.stopProcessing();
     });
 
-    // Очищення логів
-    const clearLogsBtn = byId('excel-clear-logs');
+    // Очищення логів (виправлено ID)
+    const clearLogsBtn = byId('btn-clear-excel-log');
     clearLogsBtn?.addEventListener('click', () => {
       this.clearLogs();
     });
 
-    // Збереження логів
-    const saveLogsBtn = byId('excel-save-logs');
+    // Збереження логів (виправлено ID)
+    const saveLogsBtn = byId('btn-save-excel-log');
     saveLogsBtn?.addEventListener('click', () => {
       this.saveLogs();
     });

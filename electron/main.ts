@@ -10,10 +10,51 @@ import { createStorage } from './services/storage'
 import { UpdateService, UpdateState } from './services/updateService'
 import { UkrainianNameDeclension } from './services/UkrainianNameDeclension'
 
+console.log('\n\n🌟🌟🌟🌟🌟 MAIN.TS ФАЙЛ ЗАВАНТАЖЕНО - ВЕРСІЯ 17.10.2025-15:00 🌟🌟🌟🌟🌟\n')
+console.log('📁 Поточний файл:', __filename)
+console.log('📂 Директорія:', __dirname)
+
 const isDev = process.env.NODE_ENV !== 'production' && (process.env.VITE_DEV_SERVER_URL !== undefined || process.argv.includes('--dev'))
 
 let storage: any
 let updateService: UpdateService
+let mainWindow: BrowserWindow | null = null
+
+// Функція для відправки логів в renderer process
+function sendLog(level: 'info' | 'warn' | 'error', message: string) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('main:log', level, message)
+  }
+}
+
+// Перехоплюємо console.log/warn/error для відправки в UI
+const originalLog = console.log
+const originalWarn = console.warn
+const originalError = console.error
+
+console.log = (...args: any[]) => {
+  originalLog.apply(console, args)
+  const message = args.map(arg => {
+    if (typeof arg === 'object') {
+      try { return JSON.stringify(arg, null, 2) }
+      catch { return String(arg) }
+    }
+    return String(arg)
+  }).join(' ')
+  sendLog('info', message)
+}
+
+console.warn = (...args: any[]) => {
+  originalWarn.apply(console, args)
+  const message = args.map(arg => String(arg)).join(' ')
+  sendLog('warn', message)
+}
+
+console.error = (...args: any[]) => {
+  originalError.apply(console, args)
+  const message = args.map(arg => String(arg)).join(' ')
+  sendLog('error', message)
+}
 
 function norm(str: string): string {
   return str.toLowerCase()
@@ -25,7 +66,7 @@ function norm(str: string): string {
 }
 
 function createWindow(): BrowserWindow {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -39,14 +80,35 @@ function createWindow(): BrowserWindow {
   if (isDev) {
     const devURL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5177'
     mainWindow.loadURL(devURL)
-    mainWindow.webContents.openDevTools()
+    
+    // Відкриваємо DevTools з налаштуваннями
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
+    
+    // FIXED: Вимикаємо Autofill в DevTools для уникнення помилок
+    mainWindow.webContents.on('devtools-opened', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.devToolsWebContents?.executeJavaScript(`
+          // Приховуємо помилки Autofill у консолі
+          const originalError = console.error;
+          console.error = function(...args) {
+            const msg = args[0]?.toString() || '';
+            if (msg.includes('Autofill')) {
+              return; // Ігноруємо помилки Autofill
+            }
+            originalError.apply(console, args);
+          };
+        `).catch(() => {
+          // Ігноруємо помилки виконання скрипта
+        });
+      }
+    });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
   // Додаємо можливість відкрити DevTools в продакшн режимі (F12)
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.key === 'F12') {
+    if (input.key === 'F12' && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.toggleDevTools()
     }
   })
@@ -467,16 +529,18 @@ async function extractFormattedParagraphsFromWord(wordBuf: ArrayBuffer): Promise
       buffer: Buffer.from(wordBuf)
     })
     
-    // Розбити HTML на абзаци, зберігаючи HTML форматування
     const htmlParagraphs = result.value.split(/<\/?p[^>]*>/i).filter(p => p.trim().length > 0)
     
-    const paragraphs = htmlParagraphs.map(htmlPara => ({
-      text: htmlPara.replace(/<[^>]+>/g, '').trim(),
-      html: htmlPara.trim()
-    })).filter(p => p.text.length > 0)
+    const paragraphs = htmlParagraphs.map((htmlPara) => {
+      const text = htmlPara.replace(/<[^>]+>/g, '').trim()
+      const html = htmlPara.trim()
+      
+      return { text, html }
+    }).filter(p => p.text.length > 0)
     
-    // Перша строка (перший абзац)
     const firstLine = paragraphs.length > 0 ? paragraphs[0].text : ''
+    
+    console.log(`[extractFormatted] Загалом абзаців: ${paragraphs.length}`)
     
     return { paragraphs, firstLine }
   } catch (err) {
@@ -486,7 +550,7 @@ async function extractFormattedParagraphsFromWord(wordBuf: ArrayBuffer): Promise
 
 // Типи для структури наказу
 interface OrderItem {
-  type: 'point' | 'subpoint' | 'subsubpoint' | 'paragraph'
+  type: 'point' | 'subpoint' | 'dash-point' | 'paragraph'
   number?: string  // "1", "7.1", "8.3" тощо
   text: string
   html: string
@@ -496,11 +560,62 @@ interface OrderItem {
   matchedNames?: string[] // ПІБ знайдені в цьому елементі
 }
 
+// ============================================================================
+// РОЗПІЗНАВАННЯ ШТРИХПУНКТУ ЗА ВІЙСЬКОВИМИ ЗВАННЯМИ
+// ============================================================================
+
+function isDashPointByPattern(text: string): boolean {
+  // Очищуємо текст від зайвих пробілів
+  const cleanText = text.trim().toLowerCase()
+  
+  // === СПИСОК ДОЗВОЛЕНИХ ВІЙСЬКОВИХ ЗВАНЬ ===
+  const allowedRanks = [
+    'солдат',
+    'старший солдат',
+    'молодший сержант',
+    'сержант',
+    'старший сержант',
+    'головний сержант',
+    'штаб-сержант',
+    'капітан',
+    'майор',
+    'молодший лейтенант',
+    'лейтенант',
+    'старший лейтенант'
+  ]
+  
+  // Перевіряємо точну відповідність (можливо з тире в кінці)
+  for (const rank of allowedRanks) {
+    // Варіант 1: Точно як у списку
+    if (cleanText === rank) {
+      console.log(`[isDashPoint] ✅ Знайдено звання: "${text}"`)
+      return true
+    }
+    
+    // Варіант 2: Із тире або пробілом і тире в кінці
+    if (cleanText === `${rank} -` || cleanText === `${rank}-`) {
+      console.log(`[isDashPoint] ✅ Знайдено звання з тире: "${text}"`)
+      return true
+    }
+    
+    // Варіант 3: Із двокрапкою в кінці
+    if (cleanText === `${rank}:` || cleanText === `${rank} :`) {
+      console.log(`[isDashPoint] ✅ Знайдено звання з двокрапкою: "${text}"`)
+      return true
+    }
+  }
+  
+  return false
+}
+
 // Функція для розбору структури наказу з пунктами та підпунктами
 function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>): OrderItem[] {
   const structure: OrderItem[] = []
   let currentPoint: OrderItem | null = null
   let currentSubpoint: OrderItem | null = null
+  let currentDashPoint: OrderItem | null = null
+  
+  console.log('[parseOrderStructure] Початок розбору структури...\n')
   
   for (let i = 0; i < paragraphs.length; i++) {
     const para = paragraphs[i]
@@ -508,7 +623,6 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
     const html = para.html.trim()
     
     // Розпізнавання основних пунктів (1, 2, 3, ... або 1., 2., 3., ...)
-    // Покращений regex для точнішого розпізнавання
     const pointMatch = text.match(/^(\d+)\.?\s+(.+)/) && !text.match(/^\d+\.\d+/)
     if (pointMatch) {
       const matches = text.match(/^(\d+)\.?\s+(.+)/)
@@ -527,6 +641,7 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
       }
       structure.push(currentPoint)
       currentSubpoint = null
+      currentDashPoint = null
       continue
     }
     
@@ -551,17 +666,18 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
       if (currentPoint) {
         currentPoint.children.push(currentSubpoint)
       } else {
-        // Якщо підпункт без основного пункту, створюємо окремий елемент
         structure.push(currentSubpoint)
       }
+      currentDashPoint = null
       continue
     }
     
-    // Розпізнавання підпунктів підпунктів (жирний підкреслений текст)
-    const hasStrongUnderline = html.includes('<strong>') && html.includes('<u>')
-    if (hasStrongUnderline) {
-      const subsubpoint: OrderItem = {
-        type: 'subsubpoint',
+    // === 3. ПЕРЕВІРКА НА ШТРИХПУНКТ ЗА ВІЙСЬКОВИМ ЗВАННЯМ ===
+    if (isDashPointByPattern(text)) {
+      console.log(`[parseOrderStructure] ⭐⭐⭐ ШтрихПункт (звання) на позиції ${i}: "${text}"`)
+      
+      const dashpoint: OrderItem = {
+        type: 'dash-point',
         text: text,
         html: html,
         index: i,
@@ -570,12 +686,17 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
       }
       
       if (currentSubpoint) {
-        currentSubpoint.children.push(subsubpoint)
+        currentSubpoint.children.push(dashpoint)
+        console.log(`[parseOrderStructure]    → Додано до підпункту ${currentSubpoint.number}`)
       } else if (currentPoint) {
-        currentPoint.children.push(subsubpoint)
+        currentPoint.children.push(dashpoint)
+        console.log(`[parseOrderStructure]    → Додано до пункту ${currentPoint.number}`)
       } else {
-        structure.push(subsubpoint)
+        structure.push(dashpoint)
+        console.log(`[parseOrderStructure]    → УВАГА: Додано до кореня`)
       }
+      
+      currentDashPoint = dashpoint
       continue
     }
     
@@ -586,10 +707,12 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
       html: html,
       index: i,
       children: [],
-      parent: currentSubpoint || currentPoint || undefined
+      parent: currentDashPoint || currentSubpoint || currentPoint || undefined
     }
     
-    if (currentSubpoint) {
+    if (currentDashPoint) {
+      currentDashPoint.children.push(paragraph)
+    } else if (currentSubpoint) {
       currentSubpoint.children.push(paragraph)
     } else if (currentPoint) {
       currentPoint.children.push(paragraph)
@@ -597,6 +720,36 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
       structure.push(paragraph)
     }
   }
+  
+  // === ДІАГНОСТИЧНИЙ ВИВІД СТРУКТУРИ ===
+  console.log('\n[parseOrderStructure] === СТРУКТУРА ДОКУМЕНТА ===')
+  function printStructure(items: OrderItem[], depth = 0) {
+    for (const item of items) {
+      const indent = '  '.repeat(depth)
+      const icon = item.type === 'dash-point' ? '⭐⭐⭐' : 
+                   item.type === 'point' ? '📌' :
+                   item.type === 'subpoint' ? '📍' : '📝'
+      console.log(`${indent}${icon} ${item.type}${item.number ? ` ${item.number}` : ''}: "${item.text.substring(0, 50)}..." (idx: ${item.index})`)
+      if (item.children.length > 0) {
+        printStructure(item.children, depth + 1)
+      }
+    }
+  }
+  printStructure(structure)
+  console.log('[parseOrderStructure] === КІНЕЦЬ СТРУКТУРИ ===\n')
+  
+  // Підрахунок ШтрихПунктів
+  function countDashPoints(items: OrderItem[]): number {
+    let count = 0
+    for (const item of items) {
+      if (item.type === 'dash-point') count++
+      count += countDashPoints(item.children)
+    }
+    return count
+  }
+  
+  const dashPointCount = countDashPoints(structure)
+  console.log(`[parseOrderStructure] ЗАГАЛОМ ШТРИХПУНКТІВ У СТРУКТУРІ: ${dashPointCount}\n`)
   
   return structure
 }
@@ -637,46 +790,85 @@ async function readExcelColumnD(filePath: string): Promise<string[]> {
 // Функція для пошуку в структурі з контекстом
 function findInOrderStructure(structure: OrderItem[], keyword: string): OrderItem[] {
   const results: OrderItem[] = []
+  const addedIndices = new Set<number>()  // Для уникнення дублів
   const normalizedKeyword = keyword.toLowerCase()
   
-  function searchRecursive(items: OrderItem[], parentContext: OrderItem[] = []): void {
+  const norm = (text: string) => text.toLowerCase()
+  
+  // === СТАТИСТИКА ДЛЯ ДІАГНОСТИКИ ===
+  let foundParagraphs = 0
+  let foundPoints = 0
+  let foundSubpoints = 0
+  let foundDashPoints = 0
+  
+  function addWithHierarchy(item: OrderItem): void {
+    // Функція для додавання елемента разом з усією його ієрархією батьків
+    const hierarchyChain: OrderItem[] = []
+    
+    // Збираємо всю ієрархію від елемента до кореня
+    let current: OrderItem | undefined = item
+    while (current) {
+      hierarchyChain.unshift(current)  // Додаємо на початок
+      current = current.parent
+    }
+    
+    // === ЛОГУВАННЯ ІЄРАРХІЇ ===
+    console.log(`[findInOrderStructure] Додавання ієрархії для "${item.text.substring(0, 40)}...":`)
+    for (const h of hierarchyChain) {
+      console.log(`[findInOrderStructure]   ${h.type}${h.number ? ` ${h.number}` : ''}: "${h.text.substring(0, 40)}..."`)
+    }
+    
+    // Додаємо всі елементи ієрархії, уникаючи дублів
+    for (const hierarchyItem of hierarchyChain) {
+      if (!addedIndices.has(hierarchyItem.index)) {
+        results.push(hierarchyItem)
+        addedIndices.add(hierarchyItem.index)
+        
+        // Підрахунок статистики
+        if (hierarchyItem.type === 'dash-point') {
+          foundDashPoints++
+          console.log(`[findInOrderStructure]   ✅ Додано ШтрихПункт: "${hierarchyItem.text.substring(0, 40)}..."`)
+        } else if (hierarchyItem.type === 'point') {
+          foundPoints++
+        } else if (hierarchyItem.type === 'subpoint') {
+          foundSubpoints++
+        } else if (hierarchyItem.type === 'paragraph') {
+          foundParagraphs++
+        }
+      }
+    }
+  }
+  
+  function searchRecursive(items: OrderItem[]): void {
     for (const item of items) {
       const normalizedText = norm(item.text)
       
       if (normalizedText.includes(normalizedKeyword)) {
-        // Знайшли збіг - зберігаємо весь контекст
-        const fullContext = [...parentContext]
+        console.log(`[findInOrderStructure] 🎯 Знайдено збіг в ${item.type}${item.number ? ` ${item.number}` : ''}: "${item.text.substring(0, 60)}..."`)
         
-        // Додаємо батьківський пункт якщо є
-        if (item.parent && !fullContext.includes(item.parent)) {
-          fullContext.push(item.parent)
+        if (item.parent) {
+          console.log(`[findInOrderStructure]    Батько: ${item.parent.type}${item.parent.number ? ` ${item.parent.number}` : ''}: "${item.parent.text.substring(0, 40)}..."`)
         }
         
-        // Додаємо сам елемент
-        if (!results.includes(item)) {
-          results.push(item)
-        }
-        
-        // Додаємо всі елементи контексту
-        for (const contextItem of fullContext) {
-          if (!results.includes(contextItem)) {
-            results.push(contextItem)
-          }
-        }
+        addWithHierarchy(item)
       }
       
       // Рекурсивний пошук в дочірніх елементах
       if (item.children.length > 0) {
-        const newContext = [...parentContext]
-        if (item.type === 'point' || item.type === 'subpoint') {
-          newContext.push(item)
-        }
-        searchRecursive(item.children, newContext)
+        searchRecursive(item.children)
       }
     }
   }
   
   searchRecursive(structure)
+  
+  // === ФІНАЛЬНА СТАТИСТИКА ===
+  console.log(`[findInOrderStructure] === СТАТИСТИКА ПОШУКУ ===`)
+  console.log(`[findInOrderStructure] Всього елементів в результаті: ${results.length}`)
+  console.log(`[findInOrderStructure]   - Пунктів: ${foundPoints}`)
+  console.log(`[findInOrderStructure]   - Підпунктів: ${foundSubpoints}`)
+  console.log(`[findInOrderStructure]   - ШтрихПунктів: ${foundDashPoints} ⭐`)
+  console.log(`[findInOrderStructure]   - Абзаців: ${foundParagraphs}`)
   
   // Сортуємо результати за оригінальним порядком в документі
   return results.sort((a, b) => a.index - b.index)
@@ -785,7 +977,7 @@ async function createStructuredResultDocument(
     }))
   }
   
-  // Функція для конвертації OrderItem в Paragraph БЕЗ ЖОДНИХ ВІДСТУПІВ
+  // Функція для конвертації OrderItem в Paragraph
   function createParagraphFromItem(item: OrderItem): Paragraph {
     // Формування тексту з номером пункту/підпункту
     let displayText = item.text
@@ -796,22 +988,26 @@ async function createStructuredResultDocument(
       displayText = `${item.number}. ${cleanText}`
     }
     
-    // Простий TextRun без складного HTML парсингу
+    // Визначити форматування залежно від типу
+    // ШтрихПункт = тільки підкреслений (БЕЗ жирного)
+    const isBold = item.type === 'point' || item.type === 'subpoint'
+    const isUnderline = item.type === 'dash-point'
+    
+    // TextRun з правильним форматуванням
     const textRun = new TextRun({
       text: displayText,
       font: "Calibri",
       size: 28, // 14pt = 28 half-points
-      bold: item.type === 'point' || item.type === 'subpoint' || item.type === 'subsubpoint'
+      bold: isBold,
+      underline: isUnderline ? { type: 'single' } : undefined
     })
     
-    // БЕЗ ЖОДНИХ ВІДСТУПІВ - все по лівому краю
     return new Paragraph({
       children: [textRun],
       alignment: 'both', // Вирівнювання за шириною
       indent: {
         firstLine: 720 // Абзацний відступ (0.5 дюйма)
       }
-      // Ніяких spacing - тільки текст
     })
   }
   
@@ -819,13 +1015,23 @@ async function createStructuredResultDocument(
   if (matchedItems.length > 0) {
     for (let i = 0; i < matchedItems.length; i++) {
       const item = matchedItems[i]
+      const prevItem = i > 0 ? matchedItems[i - 1] : null
       const nextItem = i < matchedItems.length - 1 ? matchedItems[i + 1] : null
       
       // Додати пустий рядок перед пунктами та підпунктами
       if (item.type === 'point' || item.type === 'subpoint') {
         children.push(new Paragraph({
           children: [new TextRun({ text: "", font: "Calibri", size: 28 })],
-          alignment: 'both', // Вирівнювання за шириною
+          alignment: 'both',
+          spacing: { after: 0 }
+        }))
+      }
+      
+      // Додати пустий рядок перед ШтрихПунктом, якщо попередній елемент був абзацем
+      if (item.type === 'dash-point' && prevItem?.type === 'paragraph') {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: "", font: "Calibri", size: 28 })],
+          alignment: 'both',
           spacing: { after: 0 }
         }))
       }
@@ -833,24 +1039,26 @@ async function createStructuredResultDocument(
       // Додати основний абзац
       children.push(createParagraphFromItem(item))
       
-      // Додати пустий рядок після пунктів та підпунктів, 
-      // але НЕ додавати, якщо наступний елемент - підпункт для цього пункту
+      // Додати пустий рядок після пунктів та підпунктів
+      // НЕ додавати, якщо наступний елемент - підпункт або ШтрихПункт цього пункту
       if (item.type === 'point' || item.type === 'subpoint') {
         const shouldAddEmptyLine = !(
           item.type === 'point' && 
           nextItem && 
-          nextItem.type === 'subpoint' && 
+          (nextItem.type === 'subpoint' || nextItem.type === 'dash-point') && 
           nextItem.parent === item
         )
         
         if (shouldAddEmptyLine) {
           children.push(new Paragraph({
             children: [new TextRun({ text: "", font: "Calibri", size: 28 })],
-            alignment: 'both', // Вирівнювання за шириною
+            alignment: 'both',
             spacing: { after: 0 }
           }))
         }
       }
+      
+      // Після ШтрихПункту НІКОЛИ не додавати пустий рядок
     }
   } else {
     children.push(new Paragraph({ 
@@ -894,6 +1102,19 @@ async function createStructuredResultDocument(
 }
 
 ipcMain.handle('order:process', async (e, payload) => {
+  // КРИТИЧНА ДІАГНОСТИКА #1: ТОЧКА ВХОДУ
+  console.log('\n\n🚨🚨🚨 [order:process] ТОЧКА ВХОДУ - HANDLER СТАРТУВАВ 🚨🚨🚨\n')
+  console.log('═'.repeat(80))
+  console.log('🎯🎯🎯 [order:process] HANDLER ВИКЛИКАНО - ВЕРСІЯ 17.10.2025-15:55 🎯🎯🎯')
+  console.log('═'.repeat(80))
+  console.log('\n')
+  
+  // ДІАГНОСТИКА #2: PAYLOAD СТРУКТУРА
+  console.log('📦 [order:process] Payload keys:', Object.keys(payload))
+  console.log('📦 [order:process] Payload.mode:', payload.mode)
+  console.log('📦 [order:process] Payload.wordBuf exists:', !!payload.wordBuf)
+  console.log('📦 [order:process] Payload.outputPath:', payload.outputPath)
+  
   try {
     console.log('[order:process] starting...', {
       hasWordBuf: !!payload.wordBuf,
@@ -911,18 +1132,30 @@ ipcMain.handle('order:process', async (e, payload) => {
       return { ok: false, error: 'Шлях збереження відсутній' }
     }
     
-    // 2. Обробка з підтримкою різних типів документів
-    if (payload.mode === 'tokens') {
-      const results: Array<{type: string, path: string, stats: any}> = []
-      
-      // Витягнути форматовані абзаци з Word (для всіх режимів)
-      const { paragraphs: formattedParagraphs, firstLine } = await extractFormattedParagraphsFromWord(payload.wordBuf)
-      
-      // Розбір структури наказу на пункти та підпункти
-      const orderStructure = parseOrderStructure(formattedParagraphs)
-      console.log(`[order:process] Розібрано структуру наказу: ${orderStructure.length} основних елементів`)
-      
-      const paragraphs = formattedParagraphs.map(p => p.text) // Отримати тільки текст для зворотної сумісності
+    // 2. Обробка наказу (всі режими)
+    const results: Array<{type: string, path: string, stats: any}> = []
+    
+    console.log('\n\n🚀🚀🚀 [order:process] ПЕРЕД викликом extractFormattedParagraphsFromWord 🚀🚀🚀')
+    console.log(`[order:process] wordBuf type: ${typeof payload.wordBuf}`)
+    console.log(`[order:process] wordBuf constructor: ${payload.wordBuf?.constructor?.name}`)
+    console.log(`[order:process] wordBuf keys:`, Object.keys(payload.wordBuf || {}).slice(0, 10))
+    console.log(`[order:process] wordBuf byteLength: ${payload.wordBuf?.byteLength}`)
+    console.log(`[order:process] wordBuf buffer: ${payload.wordBuf?.buffer?.byteLength}`)
+    console.log(`[order:process] Is ArrayBuffer: ${payload.wordBuf instanceof ArrayBuffer}`)
+    console.log(`[order:process] Is Buffer: ${Buffer.isBuffer(payload.wordBuf)}`)
+    console.log(`[order:process] Is Uint8Array: ${payload.wordBuf instanceof Uint8Array}`)
+    
+    // Витягнути форматовані абзаци з Word (для всіх режимів)
+    const { paragraphs: formattedParagraphs, firstLine } = await extractFormattedParagraphsFromWord(payload.wordBuf)
+    
+    console.log('\n\n✅✅✅ [order:process] ПІСЛЯ extractFormattedParagraphsFromWord ✅✅✅')
+    console.log(`[order:process] Отримано paragraphs: ${formattedParagraphs?.length || 0}, firstLine: "${firstLine?.substring(0, 50) || 'undefined'}"`)
+    
+    // Розбір структури наказу на пункти та підпункти
+    const orderStructure = parseOrderStructure(formattedParagraphs)
+    console.log(`[order:process] Розібрано структуру наказу: ${orderStructure.length} основних елементів`)
+    
+    const paragraphs = formattedParagraphs.map(p => p.text) // Отримати тільки текст для зворотної сумісності
       
       console.log(`[order:process] Знайдено абзаців у Word: ${paragraphs.length}`)
       console.log(`[order:process] Перша строка наказу: "${firstLine}"`)
@@ -1066,10 +1299,6 @@ ipcMain.handle('order:process', async (e, payload) => {
         } : { tokens: 0, paragraphs: 0, matched: 0 },
         results: results
       }
-    }
-    
-    // Якщо не вибрано жодного режиму
-    return { ok: false, error: 'Оберіть хоча б один режим: 2БСП або Розпорядження' }
     
   } catch (err) {
     console.error('[order:process] Unexpected error:', err)
@@ -1078,3 +1307,62 @@ ipcMain.handle('order:process', async (e, payload) => {
 })
 
 console.log('[main] dialog:save handler ready')
+
+// ============================================================================
+// ТЕСТУВАННЯ РОЗПІЗНАВАННЯ ВІЙСЬКОВИХ ЗВАНЬ
+// ============================================================================
+
+function testDashPointPatterns() {
+  console.log('\n=== ТЕСТ РОЗПІЗНАВАННЯ ВІЙСЬКОВИХ ЗВАНЬ ===\n')
+  
+  const testCases = [
+    // ✅ Мають розпізнатися
+    { text: 'солдат', expected: true },
+    { text: 'старший солдат', expected: true },
+    { text: 'молодший сержант', expected: true },
+    { text: 'сержант', expected: true },
+    { text: 'старший сержант', expected: true },
+    { text: 'головний сержант', expected: true },
+    { text: 'штаб-сержант', expected: true },
+    { text: 'капітан', expected: true },
+    { text: 'майор', expected: true },
+    { text: 'молодший лейтенант', expected: true },
+    { text: 'лейтенант', expected: true },
+    { text: 'старший лейтенант', expected: true },
+    { text: 'молодший сержант -', expected: true },
+    { text: 'сержант:', expected: true },
+    { text: 'Молодший Сержант', expected: true },
+    { text: 'головний сержант -', expected: true },
+    
+    // ❌ НЕ мають розпізнатися
+    { text: '13. ОГОЛОСИТИ про присвоєння', expected: false },
+    { text: '15.1. Зі складу сил', expected: false },
+    { text: 'старшого лейтенанта ПЕТРЕНКА', expected: false },
+    { text: 'прапорщик', expected: false },
+    { text: 'молодший сержант дуже довгий текст', expected: false }
+  ]
+  
+  let passed = 0
+  let failed = 0
+  
+  for (const testCase of testCases) {
+    const result = isDashPointByPattern(testCase.text)
+    const status = result === testCase.expected ? '✅' : '❌'
+    
+    if (result === testCase.expected) {
+      passed++
+    } else {
+      failed++
+      console.log(`${status} FAIL: "${testCase.text}"`)
+      console.log(`   Очікувалось: ${testCase.expected}, отримано: ${result}`)
+    }
+  }
+  
+  console.log(`\n=== РЕЗУЛЬТАТИ ===`)
+  console.log(`✅ Пройдено: ${passed}/${testCases.length}`)
+  console.log(`❌ Провалено: ${failed}/${testCases.length}`)
+  console.log(`==================\n`)
+}
+
+// Розкоментуйте для тестування перед обробкою наказів:
+// testDashPointPatterns()

@@ -58,6 +58,9 @@ interface ElectronAPI {
   onBatchLog(callback: (logEntry: { level: string, message: string }) => void): void
   onBatchComplete(callback: (result: any) => void): void
   
+  // Logger API
+  onLog(callback: (level: string, message: string) => void): void
+  
   chooseSavePath(suggestName?: string): Promise<string | undefined>
   selectFolder(): Promise<{ filePath: string } | undefined>
   
@@ -124,6 +127,11 @@ contextBridge.exposeInMainWorld('api', {
   },
   onBatchComplete: (callback: (result: any) => void): void => {
     ipcRenderer.on('batch:complete', (_, result) => callback(result))
+  },
+
+  // Logger API
+  onLog: (callback: (level: string, message: string) => void): void => {
+    ipcRenderer.on('main:log', (_, level, message) => callback(level, message))
   },
 
   chooseSavePath: (suggestName?: string): Promise<string | undefined> => ipcRenderer.invoke('dialog:save', { suggestName }),

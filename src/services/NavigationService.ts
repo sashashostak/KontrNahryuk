@@ -66,7 +66,7 @@ export class NavigationService {
    * @public
    */
   public getCurrentRoute(): Route {
-    const hash = location.hash.slice(2) || 'home'; // #/ видаляємо
+    const hash = location.hash.slice(2) || 'functions'; // #/ видаляємо, за замовчуванням functions
     return hash as Route;
   }
 
@@ -78,17 +78,23 @@ export class NavigationService {
   private showRoute(route: Route): void {
     // Ховаємо всі маршрути
     document.querySelectorAll<HTMLElement>('.route').forEach(el => {
-      el.style.display = 'none';
+      el.hidden = true;
     });
 
-    // Показуємо потрібний маршрут
-    const routeElement = document.getElementById(route);
+    // Показуємо потрібний маршрут (шукаємо за data-route)
+    const routeElement = document.querySelector<HTMLElement>(`[data-route="/${route}"]`);
     if (routeElement) {
-      routeElement.style.display = 'block';
+      routeElement.hidden = false;
       log(`📍 Навігація: ${route}`);
     } else {
-      console.warn(`Route element not found: ${route}`);
+      console.warn(`Route element not found: /${route}`);
     }
+    
+    // Оновлюємо активні пункти навігації
+    document.querySelectorAll('.nav a').forEach(link => {
+      const href = link.getAttribute('href') || '';
+      link.classList.toggle('active', href === `#/${route}`);
+    });
   }
 
   /**

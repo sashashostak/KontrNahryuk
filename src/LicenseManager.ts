@@ -28,7 +28,7 @@ export class LicenseManager {
 
   /**
    * Прив'язка обробників до кнопок ліцензування
-   * FIXED: Налаштовує кнопки в налаштуваннях та license gate
+   * FIXED: Налаштовує кнопки з правильними ID з HTML
    * @private
    */
   private bindLicenseButtons(): void {
@@ -44,8 +44,8 @@ export class LicenseManager {
       }
     });
 
-    // Кнопка активації в license gate
-    byId('btn-activate-license')?.addEventListener('click', () => {
+    // Кнопка активації в license gate (правильний ID)
+    byId('gate-license-btn')?.addEventListener('click', () => {
       this.activateLicense();
     });
 
@@ -183,15 +183,11 @@ export class LicenseManager {
     if (gate) {
       gate.style.display = 'flex';
     }
-    // Приховуємо основний контент
-    document.querySelectorAll<HTMLElement>('.route').forEach(route => {
-      route.style.display = 'none';
-    });
   }
 
   /**
    * Показати основний застосунок
-   * FIXED: Приховує License Gate та показує контент
+   * FIXED: Приховує License Gate, NavigationService сам керує routes
    * @private
    */
   private showMainApp(): void {
@@ -199,10 +195,6 @@ export class LicenseManager {
     if (gate) {
       gate.style.display = 'none';
     }
-    // Показуємо основний контент
-    document.querySelectorAll<HTMLElement>('.route').forEach(route => {
-      route.style.display = '';
-    });
     // Завантажуємо інформацію про ліцензію для updates секції
     this.loadLicenseInfo();
   }

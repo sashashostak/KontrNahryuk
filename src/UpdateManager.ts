@@ -31,17 +31,22 @@ export class UpdateManager {
 
   /**
    * Прив'язка обробників до кнопок оновлення
-   * FIXED: Використовує константи DOM_IDS
+   * FIXED: Використовує правильні ID з HTML
    * @private
    */
   private bindUpdateButtons(): void {
-    // Кнопка завантаження оновлення
-    byId('btn-download-update')?.addEventListener('click', () => {
+    // Кнопка автоматичного оновлення
+    byId('btn-auto-update')?.addEventListener('click', () => {
       this.downloadAndInstallUpdate();
     });
 
-    // Кнопка відкриття сторінки завантаження
-    byId('btn-open-download-page')?.addEventListener('click', () => {
+    // Кнопка обов'язкового оновлення
+    byId('btn-mandatory-update')?.addEventListener('click', () => {
+      this.downloadAndInstallUpdate();
+    });
+
+    // Кнопка ручного завантаження
+    byId('btn-manual-download')?.addEventListener('click', () => {
       this.openDownloadPage();
     });
 
@@ -61,8 +66,13 @@ export class UpdateManager {
     });
 
     // Кнопка збереження логу помилки
-    byId('btn-save-update-log')?.addEventListener('click', () => {
+    byId('btn-save-log')?.addEventListener('click', () => {
       this.saveUpdateLog();
+    });
+
+    // Кнопка виходу з додатку
+    byId('btn-exit-app')?.addEventListener('click', () => {
+      window.close();
     });
   }
 

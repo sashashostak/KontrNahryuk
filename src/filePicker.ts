@@ -71,11 +71,10 @@ export function bindPrettyFile(id: string): void {
 
 /**
  * Ініціалізація всіх file pickers на сторінці
- * FIXED: Викликає bindPrettyFile для стандартних ID
+ * FIXED: Викликає bindPrettyFile для існуючих ID
  * @public
  */
 export function initializeFilePickers(): void {
   bindPrettyFile('word-file');
   bindPrettyFile('word-files');
-  bindPrettyFile('excel-db');
 }

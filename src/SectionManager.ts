@@ -53,6 +53,11 @@ export class SectionManager {
     byId(DOM_IDS.CHOOSE_EXCEL)?.addEventListener(EVENT_TYPES.CLICK, () => {
       this.selectExcelFile();
     });
+
+    // Обробник для кнопки вибору місця збереження результату
+    byId(DOM_IDS.CHOOSE_RESULT)?.addEventListener(EVENT_TYPES.CLICK, () => {
+      this.selectResultPath();
+    });
   }
 
   /**
@@ -81,6 +86,26 @@ export class SectionManager {
     } catch (error) {
       console.error('Помилка вибору Excel файлу:', error);
       log(`❌ Помилка вибору Excel файлу: ${error}`);
+    }
+  }
+
+  /**
+   * Викликає діалог вибору місця збереження результату через IPC
+   * @async
+   */
+  private async selectResultPath(): Promise<void> {
+    try {
+      const filePath = await window.api?.chooseSavePath?.('result.docx');
+      if (filePath) {
+        const resultInput = byId<HTMLInputElement>('result-path');
+        if (resultInput) {
+          resultInput.value = filePath;
+        }
+        log(`💾 Обрано місце збереження: ${filePath}`);
+      }
+    } catch (error) {
+      console.error('Помилка вибору місця збереження:', error);
+      log(`❌ Помилка вибору місця збереження: ${error}`);
     }
   }
 }

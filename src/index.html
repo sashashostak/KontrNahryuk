@@ -164,7 +164,13 @@
             </div>
 
             <div class="log-container">
-              <h4>Лог виконання</h4>
+              <div class="log-header">
+                <h4>Лог виконання</h4>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn ghost small" id="btn-copy-log" title="Скопіювати логи">📋 Копіювати</button>
+                  <button class="btn ghost small" id="btn-clear-log">Очистити</button>
+                </div>
+              </div>
               <pre id="log-body" class="log-body"></pre>
             </div>
           </div>
