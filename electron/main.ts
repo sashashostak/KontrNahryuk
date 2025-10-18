@@ -561,14 +561,79 @@ interface OrderItem {
 }
 
 // ============================================================================
-// РОЗПІЗНАВАННЯ ШТРИХПУНКТУ ЗА ВІЙСЬКОВИМИ ЗВАННЯМИ
+// РОЗПІЗНАВАННЯ ШТРИХПУНКТУ ЗА ВІЙСЬКОВИМИ ЗВАННЯМИ ТА ДАТАМИ
 // ============================================================================
 
-function isDashPointByPattern(text: string): boolean {
-  // Очищуємо текст від зайвих пробілів
+// ============================================================================
+// HELPER: Перевірка чи є текст датою у форматі "з DD місяць YYYY року:"
+// ============================================================================
+
+function isDatePattern(text: string): boolean {
   const cleanText = text.trim().toLowerCase()
   
-  // === СПИСОК ДОЗВОЛЕНИХ ВІЙСЬКОВИХ ЗВАНЬ ===
+  // Список українських місяців
+  const ukrainianMonths = [
+    'січня', 'січень',
+    'лютого', 'лютий',
+    'березня', 'березень',
+    'квітня', 'квітень',
+    'травня', 'травень',
+    'червня', 'червень',
+    'липня', 'липень',
+    'серпня', 'серпень',
+    'вересня', 'вересень',
+    'жовтня', 'жовтень',
+    'листопада', 'листопад',
+    'грудня', 'грудень'
+  ]
+  
+  // Створити регулярний вираз для всіх місяців
+  const monthsPattern = ukrainianMonths.join('|')
+  
+  // Патерн: "з (1-31) (місяць) (рік 4 цифри) року" + опціональний пробіл + двокрапка
+  const dateRegex = new RegExp(
+    `^з\\s+(\\d{1,2})\\s+(${monthsPattern})\\s+(\\d{4})\\s+року\\s*:?\\s*$`,
+    'i'
+  )
+  
+  const match = cleanText.match(dateRegex)
+  
+  if (!match) {
+    return false
+  }
+  
+  // Перевірити що число місяця від 1 до 31
+  const day = parseInt(match[1], 10)
+  if (day < 1 || day > 31) {
+    return false
+  }
+  
+  // Перевірити що рік реалістичний (2020-2100)
+  const year = parseInt(match[3], 10)
+  if (year < 2020 || year > 2100) {
+    return false
+  }
+  
+  console.log(`[isDatePattern] ✅ Знайдено дату: "${text}"`)
+  return true
+}
+
+function isDashPointByPattern(text: string): boolean {
+  const cleanText = text.trim().toLowerCase()
+  
+  // === ПЕРЕВІРКА 1: ЧИ Є ЦЕ ДАТА ===
+  if (isDatePattern(text)) {
+    return true  // Лог вже виведено в isDatePattern
+  }
+  
+  // === ПЕРЕВІРКА 2: ЧИ ПОЧИНАЄТЬСЯ З "нижчепойменованих військовослужбовців" ===
+  const phrase = 'нижчепойменованих військовослужбовців'
+  if (cleanText.startsWith(phrase)) {
+    console.log(`[isDashPoint] ✅ Знайдено фразу: "${text}"`)
+    return true
+  }
+  
+  // === ПЕРЕВІРКА 3: ЧИ Є ЦЕ ВІЙСЬКОВЕ ЗВАННЯ ===
   const allowedRanks = [
     'солдат',
     'старший солдат',
@@ -991,7 +1056,12 @@ async function createStructuredResultDocument(
     // Визначити форматування залежно від типу
     // ШтрихПункт = тільки підкреслений (БЕЗ жирного)
     const isBold = item.type === 'point' || item.type === 'subpoint'
-    const isUnderline = item.type === 'dash-point'
+    
+    // === ПЕРЕВІРКА: чи це фраза "нижчепойменованих військовослужбовців" ===
+    const isPhraseStart = item.text.trim().toLowerCase().startsWith('нижчепойменованих військовослужбовців')
+    
+    // Підкреслювати тільки якщо це ШтрихПункт І це НЕ фраза
+    const isUnderline = item.type === 'dash-point' && !isPhraseStart
     
     // TextRun з правильним форматуванням
     const textRun = new TextRun({
@@ -1007,6 +1077,20 @@ async function createStructuredResultDocument(
       alignment: 'both', // Вирівнювання за шириною
       indent: {
         firstLine: 720 // Абзацний відступ (0.5 дюйма)
+      }
+    })
+  }
+  
+  // ============================================================================
+  // HELPER: Створення порожнього рядка
+  // ============================================================================
+  
+  function createEmptyLine(): Paragraph {
+    return new Paragraph({
+      text: '',
+      spacing: { 
+        before: 0,
+        after: 0 
       }
     })
   }
@@ -1027,17 +1111,20 @@ async function createStructuredResultDocument(
         }))
       }
       
-      // Додати пустий рядок перед ШтрихПунктом, якщо попередній елемент був абзацем
-      if (item.type === 'dash-point' && prevItem?.type === 'paragraph') {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: "", font: "Calibri", size: 28 })],
-          alignment: 'both',
-          spacing: { after: 0 }
-        }))
+      // === ДОДАТИ ПОРОЖНІЙ РЯДОК ПЕРЕД ШТРИХПУНКТОМ ===
+      if (item.type === 'dash-point') {
+        children.push(createEmptyLine())
+        console.log(`[createStructuredResultDocument] Додано порожній рядок ПЕРЕД: "${item.text}"`)
       }
       
       // Додати основний абзац
       children.push(createParagraphFromItem(item))
+      
+      // === ДОДАТИ ПОРОЖНІЙ РЯДОК ПІСЛЯ ШТРИХПУНКТУ ===
+      if (item.type === 'dash-point') {
+        children.push(createEmptyLine())
+        console.log(`[createStructuredResultDocument] Додано порожній рядок ПІСЛЯ: "${item.text}"`)
+      }
       
       // Додати пустий рядок після пунктів та підпунктів
       // НЕ додавати, якщо наступний елемент - підпункт або ШтрихПункт цього пункту
@@ -1057,8 +1144,6 @@ async function createStructuredResultDocument(
           }))
         }
       }
-      
-      // Після ШтрихПункту НІКОЛИ не додавати пустий рядок
     }
   } else {
     children.push(new Paragraph({ 
@@ -1313,10 +1398,10 @@ console.log('[main] dialog:save handler ready')
 // ============================================================================
 
 function testDashPointPatterns() {
-  console.log('\n=== ТЕСТ РОЗПІЗНАВАННЯ ВІЙСЬКОВИХ ЗВАНЬ ===\n')
+  console.log('\n=== ТЕСТ РОЗПІЗНАВАННЯ ШТРИХПУНКТІВ (ЗВАННЯ + ДАТИ) ===\n')
   
   const testCases = [
-    // ✅ Мають розпізнатися
+    // ✅ Військові звання
     { text: 'солдат', expected: true },
     { text: 'старший солдат', expected: true },
     { text: 'молодший сержант', expected: true },
@@ -1334,12 +1419,50 @@ function testDashPointPatterns() {
     { text: 'Молодший Сержант', expected: true },
     { text: 'головний сержант -', expected: true },
     
+    // ✅ НОВІ ТЕСТИ: Дати
+    { text: 'з 11 жовтня 2025 року:', expected: true },
+    { text: 'з 27 червня 2026 року:', expected: true },
+    { text: 'з 1 січня 2025 року:', expected: true },
+    { text: 'з 15 березня 2024 року:', expected: true },
+    { text: 'з 30 грудня 2025 року:', expected: true },
+    { text: 'З 11 ЖОВТНЯ 2025 РОКУ:', expected: true },
+    { text: 'з 5 травня 2025 року :', expected: true },
+    { text: 'з 10 лютого 2025 року:', expected: true },
+    { text: 'з 20 вересня 2025 року:', expected: true },
+    { text: 'з 8 липня 2025 року:', expected: true },
+    
+    // ✅ НОВІ ТЕСТИ: Фраза "нижчепойменованих військовослужбовців"
+    { text: 'нижчепойменованих військовослужбовців 2-го батальйону:', expected: true },
+    { text: 'нижчепойменованих військовослужбовців роти забезпечення:', expected: true },
+    { text: 'нижчепойменованих військовослужбовців особового складу', expected: true },
+    { text: 'Нижчепойменованих військовослужбовців 3-ї роти:', expected: true },
+    { text: 'НИЖЧЕПОЙМЕНОВАНИХ ВІЙСЬКОВОСЛУЖБОВЦІВ ПІДРОЗДІЛУ ОХОРОНИ:', expected: true },
+    { text: 'нижчепойменованих військовослужбовців взводу зв\'язку', expected: true },
+    { text: 'Нижчепойменованих Військовослужбовців підрозділу:', expected: true },
+    
     // ❌ НЕ мають розпізнатися
     { text: '13. ОГОЛОСИТИ про присвоєння', expected: false },
     { text: '15.1. Зі складу сил', expected: false },
     { text: 'старшого лейтенанта ПЕТРЕНКА', expected: false },
     { text: 'прапорщик', expected: false },
-    { text: 'молодший сержант дуже довгий текст', expected: false }
+    { text: 'молодший сержант дуже довгий текст', expected: false },
+    
+    // ❌ НОВІ ТЕСТИ: Неправильні дати
+    { text: 'з 11 жовтня 2025 року', expected: false },        // немає двокрапки
+    { text: 'з 11 жовтня 2025', expected: false },             // немає "року:"
+    { text: '11 жовтня 2025 року:', expected: false },         // немає "з"
+    { text: 'з 11 жовтеня 2025 року:', expected: false },      // помилка в місяці
+    { text: 'з 32 жовтня 2025 року:', expected: false },       // день 32
+    { text: 'з 0 жовтня 2025 року:', expected: false },        // день 0
+    { text: 'з 11 жовтня 2019 року:', expected: false },       // рік < 2020
+    { text: 'з 11 жовтня 2101 року:', expected: false },       // рік > 2100
+    
+    // ❌ НОВІ ТЕСТИ: Неправильні варіанти фрази
+    { text: 'про нижчепойменованих військовослужбовців', expected: false },
+    { text: 'зі складу нижчепойменованих військовослужбовців', expected: false },
+    { text: 'ОГОЛОСИТИ нижчепойменованих військовослужбовців', expected: false },
+    { text: 'нижчепойменованих', expected: false },
+    { text: 'військовослужбовців', expected: false }
   ]
   
   let passed = 0

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "kontr-nahryuk",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "KontrNahryuk - Ukrainian military document processing application with keyword search and structured output generation",
   "author": "sashashostak",
   "main": "dist/electron/main.js",
