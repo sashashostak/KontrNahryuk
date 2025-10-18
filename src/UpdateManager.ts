@@ -423,10 +423,11 @@ export class UpdateManager {
       const errorMessage = byId('error-message')?.textContent || 'Невідома помилка оновлення';
       
       // FIXED: Створюємо лог з деталями
+      const currentVersion = await (window as any).api?.invoke?.('updates:get-version') || 'невідомо';
       const logContent = [
         `=== Лог помилки оновлення KontrNahryuk ===`,
         `Час: ${new Date().toLocaleString()}`,
-        `Поточна версія: 1.3.0`,
+        `Поточна версія: ${currentVersion}`,
         `Спроба оновлення до: ${this.currentUpdateInfo?.latestVersion || 'невідомо'}`,
         `Помилка: ${errorMessage}`,
         ``,

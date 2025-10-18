@@ -401,7 +401,13 @@ function setupFilePickers(): void {
  */
 async function initializeApp(): Promise<void> {
   try {
-    log('🐷 KontrNahryuk v1.3.0 - Завантаження...');
+    // Отримуємо версію з Electron
+    const version = await (window as any).api?.invoke?.('updates:get-version') || '1.4.1';
+    log(`🐷 KontrNahryuk v${version} - Завантаження...`);
+
+    // Відображаємо версію в UI
+    const versionEl = byId('current-version');
+    if (versionEl) versionEl.textContent = version;
 
     // 1. Ініціалізація менеджерів (СПОЧАТКУ створюємо об'єкти)
     await initializeManagers();
