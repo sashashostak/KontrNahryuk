@@ -27,24 +27,14 @@ interface ElectronAPI {
   addNote(text: string): Promise<void>
   listNotes(): Promise<any[]>
   
-  // Updates API
+  // ============================================================================
+  // Updates API (Simplified - based on TZ Order Processor)
+  // ============================================================================
+  getVersion(): Promise<string>
   checkForUpdates(): Promise<any>
-  downloadUpdate(manifest: any): Promise<boolean>
-  installUpdate(manifest: any): Promise<boolean>
-  downloadAndInstallUpdate(updateInfo: any): Promise<boolean>
-  cancelUpdate(): Promise<boolean>
+  downloadUpdate(updateInfo: any): Promise<any>
   restartApp(): Promise<void>
-  getUpdateVersion(): Promise<string>
-  getUpdateState(): Promise<string>
-  getUpdateProgress(): Promise<any>
-  setLicenseKey(key: string): Promise<any>
-  getLicenseInfo(): Promise<any>
-  checkUpdateAccess(): Promise<any>
-  checkExistingLicense(): Promise<any>
-  onUpdateStateChanged(callback: (state: string) => void): void
-  onUpdateProgress(callback: (progress: any) => void): void
-  onUpdateError(callback: (error: string) => void): void
-  onUpdateComplete(callback: () => void): void
+  invoke(channel: string, ...args: any[]): Promise<any>
   
   // Batch Processing API
   selectBatchDirectory(): Promise<string | undefined>
@@ -77,38 +67,24 @@ contextBridge.exposeInMainWorld('api', {
   addNote: (text: string): Promise<void> => ipcRenderer.invoke('storage:addNote', { text }),
   listNotes: (): Promise<any[]> => ipcRenderer.invoke('storage:listNotes'),
 
-  // Updates API
-  checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updates:check-github'),
-  downloadUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:download', manifest),
-  installUpdate: (manifest: any): Promise<boolean> => ipcRenderer.invoke('updates:install', manifest),
-  downloadAndInstallUpdate: (updateInfo: any): Promise<boolean> => ipcRenderer.invoke('updates:download-and-install', updateInfo),
-  cancelUpdate: (): Promise<boolean> => ipcRenderer.invoke('updates:cancel'),
+  // ============================================================================
+  // Updates API (Advanced - with Progress Bar)
+  // ============================================================================
+  getVersion: (): Promise<string> => ipcRenderer.invoke('updates:get-version'),
+  checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updates:check'),
+  downloadUpdate: (updateInfo: any): Promise<any> => ipcRenderer.invoke('updates:download', updateInfo),
   restartApp: (): Promise<void> => ipcRenderer.invoke('updates:restart-app'),
-  getUpdateVersion: (): Promise<string> => ipcRenderer.invoke('updates:get-version'),
-  getUpdateState: (): Promise<string> => ipcRenderer.invoke('updates:get-state'),
-  getUpdateProgress: (): Promise<any> => ipcRenderer.invoke('updates:get-progress'),
-  setLicenseKey: (key: string): Promise<any> => ipcRenderer.invoke('updates:set-license', key),
-  getLicenseInfo: (): Promise<any> => ipcRenderer.invoke('updates:get-license-info'),
-  checkUpdateAccess: (): Promise<any> => ipcRenderer.invoke('updates:check-access'),
-  checkExistingLicense: (): Promise<any> => ipcRenderer.invoke('updates:check-existing-license'),
-  saveUpdateLog: (content: string): Promise<boolean> => ipcRenderer.invoke('updates:save-log', content),
-  onUpdateStateChanged: (callback: (state: string) => void): void => {
-    ipcRenderer.on('updates:state-changed', (_, state) => callback(state))
+  invoke: (channel: string, ...args: any[]): Promise<any> => ipcRenderer.invoke(channel, ...args),
+
+  // Event listeners для прогрес-бару та статусів
+  onDownloadProgress: (callback: (progress: any) => void): void => {
+    ipcRenderer.on('update:download-progress', (_, progress) => callback(progress))
   },
-  onUpdateProgress: (callback: (progress: any) => void): void => {
-    ipcRenderer.on('updates:progress', (_, progress) => callback(progress))
+  onUpdateStatus: (callback: (status: any) => void): void => {
+    ipcRenderer.on('update:status', (_, status) => callback(status))
   },
-  onUpdateError: (callback: (error: string) => void): void => {
-    ipcRenderer.on('updates:error', (_, error) => callback(error))
-  },
-  onUpdateDownloadStarted: (callback: (info: any) => void): void => {
-    ipcRenderer.on('updates:download-started', (_, info) => callback(info))
-  },
-  onUpdateDownloadCompleted: (callback: (info: any) => void): void => {
-    ipcRenderer.on('updates:download-completed', (_, info) => callback(info))
-  },
-  onUpdateComplete: (callback: () => void): void => {
-    ipcRenderer.on('updates:complete', () => callback())
+  onUpdateError: (callback: (error: any) => void): void => {
+    ipcRenderer.on('update:error', (_, error) => callback(error))
   },
 
   // Batch Processing API

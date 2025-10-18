@@ -1,13 +1,20 @@
 /**
  * UpdateManager - Управління автооновленням програми
  * FIXED: Винесено з main.ts (рядки 486-914)
+ * v3.0: Інтеграція з Advanced Auto-Update System (EventEmitter API)
  * 
  * Відповідальність:
  * - Перевірка наявності оновлень
  * - Завантаження та встановлення оновлень
- * - Відображення прогресу оновлення
+ * - Відображення прогресу оновлення (реальний час: %, швидкість, розмір)
+ * - Обробка статусних повідомлень (розпакування, backup, заміна файлів)
  * - Обробка помилок оновлення
  * - Перезапуск після оновлення
+ * 
+ * Інтеграція з updateService v3.0:
+ * - onDownloadProgress: прогрес завантаження з fetch streams
+ * - onUpdateStatus: статуси автоматичної установки
+ * - onUpdateError: обробка помилок в реальному часі
  * 
  * @class UpdateManager
  */
@@ -145,23 +152,36 @@ export class UpdateManager {
 
   /**
    * Налаштування слухачів подій оновлення від main process
-   * FIXED: Підписка на IPC події оновлення
+   * FIXED: Оновлено для Advanced API з EventEmitter (v3.0)
    * @private
    */
   private setupUpdateListeners(): void {
-    // Підписка на прогрес оновлення
-    (window as any).api?.onUpdateProgress?.((progress: any) => {
-      this.handleUpdateProgress(progress);
+    // Прогрес завантаження з updateService v3.0 (EventEmitter)
+    (window as any).api?.onDownloadProgress?.((progress: any) => {
+      this.handleUpdateProgress({
+        percent: progress.percent || 0,
+        speedKbps: progress.bytesPerSecond ? (progress.bytesPerSecond / 1024) : 0,
+        bytesReceived: progress.downloadedBytes || 0,
+        totalBytes: progress.totalBytes || 0
+      });
     });
 
-    // Підписка на зміну статусу оновлення
+    // Статусні повідомлення (розпакування, створення backup, заміна файлів)
+    (window as any).api?.onUpdateStatus?.((status: any) => {
+      const progressText = document.getElementById('progress-text');
+      if (progressText && status.message) {
+        progressText.textContent = `🐷 ${status.message}`;
+      }
+    });
+
+    // Підписка на зміну статусу оновлення (залишаємо для сумісності)
     (window as any).api?.onUpdateStateChanged?.((state: string) => {
       this.handleUpdateStateChange(state);
     });
 
-    // Підписка на помилки оновлення
-    (window as any).api?.onUpdateError?.((error: string) => {
-      this.handleUpdateError(error);
+    // Обробка помилок оновлення
+    (window as any).api?.onUpdateError?.((error: any) => {
+      this.handleUpdateError(error.message || error);
     });
 
     // Підписка на завершення оновлення
@@ -171,18 +191,32 @@ export class UpdateManager {
   }
 
   /**
-   * Додаткове налаштування слухачів подій (дублікат для сумісності)
-   * FIXED: Можливо, можна об'єднати з setupUpdateListeners
+   * Додаткове налаштування слухачів подій (Advanced API з прогрес-баром)
+   * FIXED: Оновлено для підтримки EventEmitter API з updateService v3.0
    * @private
    */
   private setupUpdateEventListeners(): void {
-    // Обробники повідомлень від electron process
-    (window as any).api?.onUpdateProgress?.((progress: any) => {
-      this.updateProgressDisplay(progress);
+    // Прогрес завантаження (нова EventEmitter API з v3.0)
+    (window as any).api?.onDownloadProgress?.((progress: any) => {
+      this.handleUpdateProgress({
+        percent: progress.percent || 0,
+        speedKbps: progress.bytesPerSecond ? (progress.bytesPerSecond / 1024) : 0,
+        bytesReceived: progress.downloadedBytes || 0,
+        totalBytes: progress.totalBytes || 0
+      });
     });
 
-    (window as any).api?.onUpdateError?.((error: string) => {
-      this.showUpdateError(error);
+    // Статусні повідомлення (розпакування, backup, заміна файлів)
+    (window as any).api?.onUpdateStatus?.((status: any) => {
+      const progressText = document.getElementById('progress-text');
+      if (progressText && status.message) {
+        progressText.textContent = `🐷 ${status.message}`;
+      }
+    });
+
+    // Обробка помилок
+    (window as any).api?.onUpdateError?.((error: any) => {
+      this.showUpdateError(error.message || error);
     });
   }
 
@@ -198,16 +232,16 @@ export class UpdateManager {
     }
 
     try {
-      this.showUpdateProgress('Підготовка до оновлення...');
+      this.showUpdateProgress('Завантаження оновлення...');
       
-      const success = await (window as any).api?.downloadAndInstallUpdate?.(this.currentUpdateInfo);
+      const result = await (window as any).api?.downloadUpdate?.(this.currentUpdateInfo);
       
-      if (!success) {
-        this.showUpdateError('Не вдалося розпочати оновлення');
+      if (!result?.success) {
+        this.showUpdateError('Не вдалося завантажити оновлення');
       }
     } catch (error) {
-      console.error('Помилка оновлення:', error);
-      this.showUpdateError('Помилка під час оновлення: ' + error);
+      console.error('Помилка завантаження:', error);
+      this.showUpdateError('Помилка під час завантаження: ' + error);
     }
   }
 
@@ -224,12 +258,11 @@ export class UpdateManager {
 
   /**
    * Скасування поточного оновлення
-   * FIXED: Асинхронна операція з поверненням UI
+   * NOTE: У спрощеній версії просто приховуємо прогрес та повертаємось до початкового стану
    * @private
    */
   private async cancelUpdate(): Promise<void> {
     try {
-      await (window as any).api?.cancelUpdate?.();
       this.hideUpdateProgress();
       this.showUpdateAvailable(); // Повертаємо до стану "доступне оновлення"
     } catch (error) {
@@ -316,15 +349,6 @@ export class UpdateManager {
       const totalMB = (progress.totalBytes / 1024 / 1024).toFixed(1);
       progressSize.textContent = `${receivedMB} / ${totalMB} MB`;
     }
-  }
-
-  /**
-   * Відображення прогресу оновлення (альтернативний метод)
-   * FIXED: Дублікат handleUpdateProgress для сумісності
-   * @private
-   */
-  private updateProgressDisplay(progress: any): void {
-    this.handleUpdateProgress(progress);
   }
 
   /**
@@ -437,23 +461,25 @@ export class UpdateManager {
         `=== Кінець логу ===`
       ].join('\n');
 
-      // Використовуємо API для збереження файлу
-      const success = await (window as any).api?.saveUpdateLog?.(logContent);
+      // Зберігаємо лог локально через download
+      const blob = new Blob([logContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `update-log-${new Date().getTime()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
       
-      if (success) {
-        // Показуємо повідомлення про успішне збереження
-        const errorMessageEl = byId('error-message');
-        if (errorMessageEl) {
-          const originalText = errorMessageEl.textContent;
-          errorMessageEl.textContent = 'Лог збережено! Перевірте папку Downloads.';
-          
-          // Повертаємо оригінальний текст через 3 секунди
-          setTimeout(() => {
-            if (errorMessageEl) errorMessageEl.textContent = originalText;
-          }, 3000);
-        }
-      } else {
-        console.error('Не вдалося зберегти лог оновлення');
+      // Показуємо повідомлення про успішне збереження
+      const errorMessageEl = byId('error-message');
+      if (errorMessageEl) {
+        const originalText = errorMessageEl.textContent;
+        errorMessageEl.textContent = 'Лог збережено! Перевірте папку Downloads.';
+        
+        // Повертаємо оригінальний текст через 3 секунди
+        setTimeout(() => {
+          if (errorMessageEl) errorMessageEl.textContent = originalText;
+        }, 3000);
       }
     } catch (error) {
       console.error('Помилка збереження логу:', error);

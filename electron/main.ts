@@ -7,7 +7,7 @@ import * as xlsx from 'xlsx'
 
 import { setupOSIntegration, notify, openExternal, togglePowerSaveBlocker } from './services/osIntegration'
 import { createStorage } from './services/storage'
-import { UpdateService, UpdateState } from './services/updateService'
+import { UpdateService } from './services/updateService'
 import { UkrainianNameDeclension } from './services/UkrainianNameDeclension'
 
 console.log('\n\n🌟🌟🌟🌟🌟 MAIN.TS ФАЙЛ ЗАВАНТАЖЕНО - ВЕРСІЯ 17.10.2025-15:00 🌟🌟🌟🌟🌟\n')
@@ -117,196 +117,79 @@ function createWindow(): BrowserWindow {
 }
 
 function setupUpdateHandlers() {
-  // Завантаження оновлення
-  ipcMain.handle('updates:download', async (_, manifest) => {
-    try {
-      return await updateService.downloadUpdate(manifest)
-    } catch (error) {
-      console.error('Помилка завантаження оновлення:', error)
-      return false
-    }
-  })
+  // ============================================================================
+  // IPC HANDLERS: AUTO-UPDATE (Simplified - based on TZ Order Processor)
+  // ============================================================================
 
-  // Встановлення оновлення
-  ipcMain.handle('updates:install', async (_, manifest) => {
-    try {
-      return await updateService.installUpdate(manifest)
-    } catch (error) {
-      console.error('Помилка встановлення оновлення:', error)
-      return false
-    }
-  })
-
-  // Отримання поточної версії
+  // Отримати поточну версію додатку
   ipcMain.handle('updates:get-version', () => {
     return updateService.getCurrentVersion()
   })
 
-  // Отримання стану оновлення
-  ipcMain.handle('updates:get-state', () => {
-    return updateService.getState()
-  })
-
-  // Отримання прогресу завантаження
-  ipcMain.handle('updates:get-progress', () => {
-    return updateService.getDownloadProgress()
-  })
-
-  // Встановлення ліцензійного ключа
-  ipcMain.handle('updates:set-license', async (_, key: string) => {
-    return await updateService.setLicenseKey(key)
-  })
-
-  // Перевірка існуючого ліцензійного ключа при запуску
-  ipcMain.handle('updates:check-existing-license', async () => {
-    return await updateService.checkUpdateAccess()
-  })
-
-  // Отримання інформації про ліцензію
-  ipcMain.handle('updates:get-license-info', async () => {
-    return await updateService.getLicenseInfo()
-  })
-
-  ipcMain.handle('updates:check-access', async () => {
-    return await updateService.checkUpdateAccess()
-  })
-
-  // Перевірка оновлень через GitHub API
-  ipcMain.handle('updates:check-github', async () => {
-    return await updateService.checkForUpdatesViaGitHub()
-  })
-
-  // Автооновлення - завантаження і встановлення через GitHub Releases
-  ipcMain.handle('updates:download-and-install', async (_, updateInfo) => {
+  // Перевірити наявність оновлень через GitHub API
+  ipcMain.handle('updates:check', async () => {
     try {
-      console.log('Спроба завантажити оновлення:', updateInfo)
-      
-      const releaseInfo = updateInfo.releaseInfo
-      if (!releaseInfo) {
-        throw new Error('Відсутня інформація про реліз')
-      }
-
-      // Шукаємо portable ZIP файл в assets
-      const portableAsset = releaseInfo.assets?.find((asset: any) => 
-        asset.name.toLowerCase().includes('portable') && asset.name.endsWith('.zip')
-      )
-      
-      if (!portableAsset) {
-        // Якщо немає portable файлу, відкриваємо сторінку релізу для ручного завантаження
-        shell.openExternal(releaseInfo.html_url)
-        throw new Error('Автоматичне оновлення недоступне. Відкрито сторінку для ручного завантаження.')
-      }
-
-      // Повідомляємо користувача що почали завантаження
-      BrowserWindow.getAllWindows().forEach(window => {
-        window.webContents.send('updates:download-started', {
-          fileName: portableAsset.name,
-          size: portableAsset.size
-        })
-      })
-
-      // Завантажуємо portable версію через GitHub API
-      const success = await updateService.downloadFromGitHub(portableAsset)
-      
-      if (success) {
-        // Повідомляємо про успішне завантаження
-        BrowserWindow.getAllWindows().forEach(window => {
-          window.webContents.send('updates:download-completed', {
-            filePath: success
-          })
-        })
-        return true
-      } else {
-        throw new Error('Не вдалося завантажити файл оновлення')
-      }
-
+      return await updateService.checkForUpdates()
     } catch (error) {
-      console.error('Помилка автооновлення:', error)
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      BrowserWindow.getAllWindows().forEach(window => {
-        window.webContents.send('updates:error', errorMessage)
-      })
-      return false
+      console.error('[IPC] Помилка перевірки оновлень:', error)
+      return {
+        hasUpdate: false,
+        latestVersion: updateService.getCurrentVersion(),
+        currentVersion: updateService.getCurrentVersion(),
+        releaseInfo: null,
+        error: error instanceof Error ? error.message : 'Невідома помилка'
+      }
     }
   })
 
-  // Скасування оновлення
-  ipcMain.handle('updates:cancel', async () => {
+  // Завантажити та встановити оновлення з GitHub
+  ipcMain.handle('updates:download', async (_, updateInfo) => {
     try {
-      // Тут можна додати логіку для скасування завантаження
-      // Поки що просто повертаємо true
-      return true
+      console.log('[IPC] Завантаження оновлення:', updateInfo)
+      return await updateService.downloadUpdate(updateInfo)
     } catch (error) {
-      console.error('Помилка скасування оновлення:', error)
-      return false
-    }
-  })
-
-  // Збереження лог файлу оновлень
-  ipcMain.handle('updates:save-log', async (_, content: string) => {
-    try {
-      const { dialog } = require('electron')
-      const fs = require('fs')
-      const path = require('path')
-      const os = require('os')
-      
-      // Пропонуємо зберегти у Downloads
-      const defaultPath = path.join(os.homedir(), 'Downloads', `KontrNahryuk-Update-Log-${Date.now()}.txt`)
-      
-      const result = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0], {
-        title: 'Зберегти лог оновлення',
-        defaultPath,
-        filters: [
-          { name: 'Text Files', extensions: ['txt'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
-      })
-      
-      if (!result.canceled && result.filePath) {
-        fs.writeFileSync(result.filePath, content, 'utf8')
-        return true
+      console.error('[IPC] Помилка завантаження:', error)
+      return {
+        success: false,
+        path: false,
+        error: error instanceof Error ? error.message : 'Невідома помилка'
       }
-      
-      return false
-    } catch (error) {
-      console.error('Помилка збереження лог файлу:', error)
-      return false
     }
   })
 
-  // Перезапуск додатка
+  // Перезапуск додатка (допоміжна функція)
   ipcMain.handle('updates:restart-app', async () => {
     try {
+      console.log('[IPC] Перезапуск додатку...')
       app.relaunch()
       app.exit(0)
     } catch (error) {
-      console.error('Помилка перезапуску:', error)
+      console.error('[IPC] Помилка перезапуску:', error)
     }
   })
 
-  // Пересилання подій оновлення до рендера
-  updateService.on('state-changed', (state) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('updates:state-changed', state)
-    })
-  })
+  // ============================================================================
+  // EVENT LISTENERS: Progress Bar & Status Updates
+  // ============================================================================
 
+  // Передати прогрес завантаження в renderer
   updateService.on('download-progress', (progress) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('updates:download-progress', progress)
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('update:download-progress', progress)
     })
   })
 
-  // Додаткові події для завершення оновлення
-  updateService.on('update-complete', () => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('updates:complete')
+  // Передати статус оновлення
+  updateService.on('status', (status) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('update:status', status)
     })
   })
 
-  updateService.on('update-error', (error) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('updates:error', error)
+  // Передати помилки
+  updateService.on('error', (error) => {
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('update:error', error)
     })
   })
 }
@@ -430,12 +313,7 @@ function setupBatchProcessing() {
 
 app.whenReady().then(async () => {
   storage = createStorage()
-  updateService = new UpdateService(storage)
-  
-  // Даємо час storage ініціалізуватись та ініціалізуємо ліцензію
-  setTimeout(async () => {
-    await updateService.initializeLicense()
-  }, 200)
+  updateService = new UpdateService()
   
   setupUpdateHandlers()
   setupBatchProcessing()
