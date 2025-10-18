@@ -87,7 +87,8 @@ class UpdateService extends EventEmitter {
   constructor(storage: any) {
     super()
     this.storage = storage
-    this.currentVersion = '1.2.7'
+    // Отримуємо версію з package.json через Electron API
+    this.currentVersion = app.getVersion()
     
     // Структура папок для оновлень у %LocalAppData%
     const localAppData = process.env.LOCALAPPDATA || process.env.APPDATA || ''
