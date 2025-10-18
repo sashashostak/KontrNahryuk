@@ -16,7 +16,7 @@
     "dist:win": "npm run build && electron-builder --win",
     "dist:portable": "npm run build && electron-builder --win portable",
     "dist:installer": "npm run build && electron-builder --win nsis",
-    "package": "npm run build && electron-packager . KontrNahryuk --platform=win32 --arch=x64 --out=release --overwrite --app-copyright=\"Copyright (c) 2024-2025 KontrNahryuk\" --app-version=1.2.7",
+    "package": "npm run build && electron-packager . KontrNahryuk --platform=win32 --arch=x64 --out=release --overwrite --app-copyright=\"Copyright (c) 2024-2025 KontrNahryuk\" --app-version=1.4.1",
     "postinstall": "electron-builder install-app-deps",
     "version:bump": "node scripts/bump-version.js",
     "version:patch": "npm run version:bump && npm run build && npm run package",
