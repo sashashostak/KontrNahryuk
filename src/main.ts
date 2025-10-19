@@ -43,7 +43,7 @@ import { SectionManager } from './SectionManager';
 import { SourceSelectionManager } from './SourceSelectionManager';
 import { BatchManager } from './BatchManager';
 import { UpdateManager } from './UpdateManager';
-import { LicenseManager } from './LicenseManager';
+// import { LicenseManager } from './LicenseManager'; // REMOVED: License system no longer used
 import { ExcelProcessor } from './ExcelProcessor';
 
 // Services
@@ -61,7 +61,7 @@ let sectionManager: SectionManager;
 let sourceSelectionManager: SourceSelectionManager;
 let batchManager: BatchManager;
 let updateManager: UpdateManager;
-let licenseManager: LicenseManager;
+// let licenseManager: LicenseManager; // REMOVED: License system no longer used
 let excelProcessor: ExcelProcessor;
 let themeService: ThemeService;
 let settingsManager: SettingsManager;
@@ -172,12 +172,12 @@ async function initializeManagers(): Promise<void> {
     batchManager = new BatchManager();
     log('✅ BatchManager ініціалізовано');
 
-    // 3. Ініціалізуємо менеджери оновлень та ліцензій
+    // 3. Ініціалізуємо менеджер оновлень
     updateManager = new UpdateManager();
     log('✅ UpdateManager ініціалізовано');
 
-    licenseManager = new LicenseManager();
-    log('✅ LicenseManager ініціалізовано');
+    // licenseManager = new LicenseManager(); // REMOVED: License system no longer used
+    // log('✅ LicenseManager ініціалізовано');
 
     // 4. Ініціалізуємо Excel процесор
     excelProcessor = new ExcelProcessor();
@@ -412,8 +412,8 @@ async function initializeApp(): Promise<void> {
     // 1. Ініціалізація менеджерів (СПОЧАТКУ створюємо об'єкти)
     await initializeManagers();
 
-    // 2. Перевірка ліцензії (блокуючий крок, ПІСЛЯ створення licenseManager)
-    await licenseManager?.checkLicenseOnStartup?.();
+    // 2. Перевірка ліцензії - REMOVED (license system no longer used)
+    // await licenseManager?.checkLicenseOnStartup?.();
 
     // 3. Завантаження основних налаштувань
     await loadSettings();
@@ -456,7 +456,7 @@ window.addEventListener('load', () => {
     source: sourceSelectionManager,
     batch: batchManager,
     update: updateManager,
-    license: licenseManager,
+    // license: licenseManager, // REMOVED: License system no longer used
     excel: excelProcessor,
     theme: themeService,
     settings: settingsManager,
