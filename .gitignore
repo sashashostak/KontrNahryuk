@@ -122,6 +122,9 @@ temp/
 *.backup
 *.bak
 *_backup.*
+*-backup
+*.ts.backup
+*.v2-backup
 
 # OS generated files
 Thumbs.db

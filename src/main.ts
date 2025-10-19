@@ -43,7 +43,6 @@ import { SectionManager } from './SectionManager';
 import { SourceSelectionManager } from './SourceSelectionManager';
 import { BatchManager } from './BatchManager';
 import { UpdateManager } from './UpdateManager';
-// import { LicenseManager } from './LicenseManager'; // REMOVED: License system no longer used
 import { ExcelProcessor } from './ExcelProcessor';
 
 // Services
@@ -61,7 +60,6 @@ let sectionManager: SectionManager;
 let sourceSelectionManager: SourceSelectionManager;
 let batchManager: BatchManager;
 let updateManager: UpdateManager;
-// let licenseManager: LicenseManager; // REMOVED: License system no longer used
 let excelProcessor: ExcelProcessor;
 let themeService: ThemeService;
 let settingsManager: SettingsManager;
@@ -175,9 +173,6 @@ async function initializeManagers(): Promise<void> {
     // 3. Ініціалізуємо менеджер оновлень
     updateManager = new UpdateManager();
     log('✅ UpdateManager ініціалізовано');
-
-    // licenseManager = new LicenseManager(); // REMOVED: License system no longer used
-    // log('✅ LicenseManager ініціалізовано');
 
     // 4. Ініціалізуємо Excel процесор
     excelProcessor = new ExcelProcessor();
@@ -409,20 +404,17 @@ async function initializeApp(): Promise<void> {
     const versionEl = byId('current-version');
     if (versionEl) versionEl.textContent = version;
 
-    // 1. Ініціалізація менеджерів (СПОЧАТКУ створюємо об'єкти)
+    // 1. Ініціалізація менеджерів
     await initializeManagers();
 
-    // 2. Перевірка ліцензії - REMOVED (license system no longer used)
-    // await licenseManager?.checkLicenseOnStartup?.();
-
-    // 3. Завантаження основних налаштувань
+    // 2. Завантаження основних налаштувань
     await loadSettings();
     setupSettingsAutoSave();
 
-    // 4. Налаштування глобальних обробників
+    // 3. Налаштування глобальних обробників
     setupGlobalEventListeners();
 
-    // 5. Ініціалізація file pickers
+    // 4. Ініціалізація file pickers
     setupFilePickers();
 
     log('✅ KontrNahryuk готовий до роботи!');
@@ -456,7 +448,6 @@ window.addEventListener('load', () => {
     source: sourceSelectionManager,
     batch: batchManager,
     update: updateManager,
-    // license: licenseManager, // REMOVED: License system no longer used
     excel: excelProcessor,
     theme: themeService,
     settings: settingsManager,
