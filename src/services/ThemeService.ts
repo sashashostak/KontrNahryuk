@@ -48,24 +48,33 @@ export class ThemeService {
   public applyTheme(theme: string): void {
     const root = document.documentElement;
     
+    console.log(`🎨 Застосування теми: ${theme}`);
+    
     // Видаляємо всі класи тем
-    root.classList.remove('light', 'dark', 'system');
+    root.classList.remove('light', 'dark');
     
     if (theme === 'light') {
       root.classList.add('light');
+      console.log('✅ Додано клас .light');
     } else if (theme === 'dark') {
-      root.classList.add('dark');
+      // Темна тема за замовчуванням в :root, тому просто видаляємо .light
+      console.log('✅ Темна тема активна (без класу)');
     } else if (theme === 'system') {
       // Визначаємо системну тему
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      console.log(`🖥️ Системна тема: ${prefersDark ? 'dark' : 'light'}`);
+      
       if (prefersDark) {
-        root.classList.add('dark');
+        // Темна тема - видаляємо .light
+        console.log('✅ Системна темна активна');
       } else {
+        // Світла тема - додаємо .light
         root.classList.add('light');
+        console.log('✅ Системна світла активна');
       }
     }
     
-    console.log(`Theme applied: ${theme}, root classes:`, root.className);
+    console.log(`📝 Підсумок: root classes = "${root.className}"`);
   }
 
   /**
