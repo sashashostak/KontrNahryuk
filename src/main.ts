@@ -85,8 +85,6 @@ async function loadSettings(): Promise<void> {
     if (is2BSPCheckbox) is2BSPCheckbox.checked = is2BSP;
     if (isOrderCheckbox) isOrderCheckbox.checked = isOrder;
     if (autoOpenCheckbox) autoOpenCheckbox.checked = autoOpen;
-    
-    log('⚙️ Основні налаштування завантажено');
   } catch (err) {
     console.warn('Failed to load settings:', err);
   }
@@ -110,7 +108,6 @@ function setupSettingsAutoSave(): void {
       checkbox.addEventListener('change', async () => {
         const setting = settingsMap[id];
         await window.api?.setSetting?.(setting, checkbox.checked);
-        log(`💾 Збережено ${setting} = ${checkbox.checked}`);
       });
     }
   });
@@ -142,38 +139,23 @@ function navigate(hash: string): void {
  */
 async function initializeManagers(): Promise<void> {
   try {
-    log('🚀 Ініціалізація менеджерів...');
-
     // 1. Спочатку ініціалізуємо базові сервіси
     themeService = new ThemeService();
-    log('✅ ThemeService ініціалізовано');
-
     settingsManager = new SettingsManager(themeService);
-    log('✅ SettingsManager ініціалізовано');
-
     navigationService = new NavigationService();
-    log('✅ NavigationService ініціалізовано');
 
     // Ініціалізуємо UILoggerService для відображення логів в UI
     uiLoggerService = new UILoggerService();
-    log('✅ UILoggerService ініціалізовано');
 
     // 2. Ініціалізуємо менеджери основного функціоналу
     sectionManager = new SectionManager();
-    log('✅ SectionManager ініціалізовано');
-
     sourceSelectionManager = new SourceSelectionManager();
-    log('✅ SourceSelectionManager ініціалізовано');
 
     // 3. Ініціалізуємо менеджер оновлень
     updateManager = new UpdateManager();
-    log('✅ UpdateManager ініціалізовано');
 
     // 4. Ініціалізуємо Excel процесор
     excelProcessor = new ExcelProcessor();
-    log('✅ ExcelProcessor ініціалізовано');
-
-    log('🎉 Всі менеджери ініціалізовано успішно!');
   } catch (error) {
     console.error('❌ Помилка ініціалізації менеджерів:', error);
   }
@@ -196,7 +178,7 @@ function setupGlobalEventListeners(): void {
         settingsManager.loadAllSettings();
         settingsManager.setupAutoSave();
         settingsManager.addSettingsAnimations();
-      }, 100);
+      }, 150);
     }
   });
 

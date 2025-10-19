@@ -12,7 +12,6 @@
  */
 
 import type { Route } from '../types';
-import { log } from '../helpers';
 
 type RouteCallback = (route: Route) => void;
 
@@ -41,17 +40,16 @@ export class NavigationService {
 
   /**
    * Обробка початкового маршруту при завантаженні
-   * FIXED: Застосовує маршрут з URL або показує home
    * @private
    */
   private handleInitialRoute(): void {
     const route = this.getCurrentRoute();
     this.showRoute(route);
+    this.notifyCallbacks(route);
   }
 
   /**
    * Обробка зміни маршруту
-   * FIXED: Викликається при hashchange
    * @private
    */
   private handleRouteChange(): void {
@@ -62,17 +60,15 @@ export class NavigationService {
 
   /**
    * Отримання поточного маршруту з URL
-   * FIXED: Парсить hash та повертає Route
    * @public
    */
   public getCurrentRoute(): Route {
-    const hash = location.hash.slice(2) || 'functions'; // #/ видаляємо, за замовчуванням functions
+    const hash = location.hash.slice(1) || '/functions';
     return hash as Route;
   }
 
   /**
    * Показ секції за маршрутом
-   * FIXED: Ховає всі .route та показує поточний
    * @private
    */
   private showRoute(route: Route): void {
@@ -81,19 +77,16 @@ export class NavigationService {
       el.hidden = true;
     });
 
-    // Показуємо потрібний маршрут (шукаємо за data-route)
-    const routeElement = document.querySelector<HTMLElement>(`[data-route="/${route}"]`);
+    // Показуємо потрібний маршрут
+    const routeElement = document.querySelector<HTMLElement>(`[data-route="${route}"]`);
     if (routeElement) {
       routeElement.hidden = false;
-      log(`📍 Навігація: ${route}`);
-    } else {
-      console.warn(`Route element not found: /${route}`);
     }
     
     // Оновлюємо активні пункти навігації
     document.querySelectorAll('.nav a').forEach(link => {
       const href = link.getAttribute('href') || '';
-      link.classList.toggle('active', href === `#/${route}`);
+      link.classList.toggle('active', href === `#${route}`);
     });
   }
 

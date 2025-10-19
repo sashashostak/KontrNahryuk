@@ -32,6 +32,7 @@ interface AppSettings {
 
 export class SettingsManager {
   private themeService: ThemeService;
+  private themeListenerAdded: boolean = false;
 
   /**
    * Конструктор - ініціалізує SettingsManager
@@ -116,6 +117,17 @@ export class SettingsManager {
       const themeSelect = byId<HTMLSelectElement>('theme-select');
       if (themeSelect) {
         themeSelect.value = theme;
+        
+        // Додаємо listener для зміни теми
+        if (!this.themeListenerAdded) {
+          themeSelect.addEventListener('change', async (e) => {
+            const target = e.target as HTMLSelectElement;
+            const selectedTheme = target.value as 'light' | 'dark';
+            await this.themeService.setTheme(selectedTheme);
+          });
+          
+          this.themeListenerAdded = true;
+        }
       }
       
       // Застосовуємо тему до документа через сервіс
@@ -123,8 +135,6 @@ export class SettingsManager {
       
       // Завантаження інформації про додаток
       await this.loadAppInfo();
-      
-      log('⚙️ Налаштування завантажено');
     } catch (err) {
       console.warn('Failed to load extended settings:', err);
     }
@@ -163,23 +173,20 @@ export class SettingsManager {
           }
           
           await window.api?.setSetting?.(settingKey, value);
-          console.log(`Setting ${settingKey} = ${value}`);
         });
       }
     });
     
-    // FIXED: Додаємо обробник для теми через ThemeService
+    // Theme selector
     const themeSelect = byId<HTMLSelectElement>('theme-select');
-    if (themeSelect) {
+    
+    if (themeSelect && !this.themeListenerAdded) {
       themeSelect.addEventListener('change', async () => {
-        const selectedTheme = themeSelect.value as 'light' | 'dark' | 'system';
-        console.log('🎨 Зміна теми на:', selectedTheme);
+        const selectedTheme = themeSelect.value as 'light' | 'dark';
         await this.themeService.setTheme(selectedTheme);
-        console.log('✅ Тема збережена');
       });
-      console.log('✅ Theme selector event listener додано');
-    } else {
-      console.warn('⚠️ theme-select не знайдено в DOM');
+      
+      this.themeListenerAdded = true;
     }
   }
 
@@ -241,8 +248,6 @@ export class SettingsManager {
       document.body.removeChild(a);
       
       URL.revokeObjectURL(url);
-      
-      log('✅ Налаштування експортовано');
     } catch (err) {
       log(`❌ Помилка експорту: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -279,8 +284,6 @@ export class SettingsManager {
         
         // Перезавантаження налаштувань на сторінці
         await this.loadAllSettings();
-        
-        log('✅ Налаштування імпортовано та застосовано');
       } catch (err) {
         log(`❌ Помилка імпорту: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -320,8 +323,6 @@ export class SettingsManager {
       
       // Перезавантаження налаштувань на сторінці
       await this.loadAllSettings();
-      
-      log('✅ Налаштування скинуто до заводських');
     } catch (err) {
       log(`❌ Помилка скидання: ${err instanceof Error ? err.message : String(err)}`);
     }

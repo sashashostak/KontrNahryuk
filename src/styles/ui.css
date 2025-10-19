@@ -324,73 +324,298 @@ textarea.input{ resize: vertical; }
 
 /* Світла тема */
 :root.light{
-  /* М'які пастельні кольори для комфорту очей */
-  --bg: #f8f9fb;               /* дуже світлий сіро-блакитний */
+  /* 🎨 М'яка та комфортна палітра */
+  --bg: #f8fafc;               /* дуже м'який сіро-блакитний */
   --panel: #ffffff;            /* чистий білий */
-  --panel-2: #f3f4f6;          /* світло-сірий з теплим відтінком */
-  --text: #2d3748;             /* м'який темно-сірий замість чорного */
-  --muted: #718096;            /* сірий для другорядного тексту */
+  --panel-2: #f1f5f9;          /* ледь помітний сірий */
+  --text: #0f172a;             /* глибокий темно-синій (м'якіший за чорний) */
+  --muted: #64748b;            /* сталево-сірий для другорядного тексту */
   
-  /* М'які акцентні кольори */
-  --accent: #4f87c8;           /* приглушений синій */
-  --accent-hover: #5b94d5;     /* світліший на hover */
-  --accent-pressed: #3f7ab8;   /* темніший при натисканні */
-  --focus: #7ba8db;            /* м'яка підсвітка фокуса */
+  /* 💙 М'які акценти без різкості */
+  --accent: #0ea5e9;           /* світлий небесно-синій (sky-500) */
+  --accent-hover: #0284c7;     /* трохи темніший (sky-600) */
+  --accent-pressed: #0369a1;   /* насичений синій (sky-700) */
+  --focus: #7dd3fc;            /* пастельний блакитний (sky-300) */
   
-  /* Рожевий поросячий носик */
-  --nose-bg: #ffc4c4;
-  --nose-hole: #7a2f2f;
-  --nose-ring: rgba(0,0,0,.12);  /* м'якша тінь для світлої теми */
-  --nose-focus: #ff9fb3;
+  /* 🐷 Ніжний рожевий поросячий носик */
+  --nose-bg: #fbcfe8;          /* пастельний рожевий (pink-200) */
+  --nose-hole: #9f1239;        /* темно-бордовий (rose-800) */
+  --nose-ring: rgba(244, 63, 94, 0.15);  /* м'яка рожева тінь */
+  --nose-focus: #f9a8d4;       /* ніжний рожевий (pink-300) */
+  
+  /* 🌈 Функціональні кольори */
+  --success: #22c55e;          /* зелений (green-500) */
+  --warning: #f59e0b;          /* помаранчевий (amber-500) */
+  --error: #ef4444;            /* червоний (red-500) */
+  --info: #0ea5e9;             /* блакитний (sky-500) */
+  
+  /* 📦 Borders & Shadows - максимально м'які */
+  --border: #e2e8f0;           /* ледь помітний бордер */
+  --border-hover: #cbd5e1;     /* трохи темніший при hover */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  --shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
 }
 
+/* 🌟 М'який однотонний фон замість градієнта */
 :root.light body {
-  background: linear-gradient(180deg, #fcfcfd, var(--bg));
+  background: var(--bg);
 }
 
+/* 📱 Сайдбар - ледь відрізняється від фону */
 :root.light .sidebar {
-  border-right: 1px solid rgba(0,0,0,0.08);
-  background: #fafbfc;        /* ледь відрізняється від білого */
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.02);
 }
 
+/* 🔝 Топбар - чистий та мінімалістичний */
 :root.light .topbar {
-  background: rgba(255,255,255,0.8);
-  border-bottom: 1px solid rgba(0,0,0,0.08);
-  backdrop-filter: blur(10px);  /* легке розмиття для глибини */
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
+/* 📄 Картки - м'які без агресивних тіней */
 :root.light .card {
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);  /* м'якіша тінь */
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
 }
 
-:root.light .input, :root.light .btn {
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #fafbfc;        /* ледь сірий фон */
+:root.light .card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: #cbd5e1;
+}
+
+/* 📝 Input поля - зручні та читабельні */
+:root.light .input {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+:root.light .input:hover {
+  border-color: var(--border-hover);
 }
 
 :root.light .input:focus {
   border-color: var(--accent);
-  outline: 2px solid rgba(79, 135, 200, 0.15);  /* м'яке виділення */
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
+  background: white;
 }
 
+/* 🔘 Кнопки - м'які без зайвих ефектів */
 :root.light .btn {
-  background: linear-gradient(135deg, #f7f8fa, #eef0f3);
+  background: white;
   color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
 :root.light .btn:hover {
-  background: linear-gradient(135deg, #eef0f3, #e5e7eb);
+  background: var(--panel-2);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
 }
 
+:root.light .btn:active {
+  transform: none;
+  box-shadow: none;
+  background: #e2e8f0;
+}
+
+/* ✨ Primary кнопка - простий синій */
 :root.light .btn.primary {
-  background: linear-gradient(135deg, #4f87c8, #3f7ab8);
+  background: var(--accent);
   color: white;
   border: none;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
 }
 
 :root.light .btn.primary:hover {
-  background: linear-gradient(135deg, #5b94d5, #4f87c8);
+  background: var(--accent-hover);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+}
+
+:root.light .btn.primary:active {
+  background: var(--accent-pressed);
+  box-shadow: 0 1px 3px rgba(14, 165, 233, 0.2);
+}
+
+/* 🔗 Посилання */
+:root.light .link,
+:root.light a {
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+:root.light .link:hover,
+:root.light a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* 📊 Навігація - проста та чітка */
+:root.light .nav a {
+  color: var(--muted);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+:root.light .nav a:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+:root.light .nav a.active {
+  color: var(--accent);
+  background: rgba(14, 165, 233, 0.08);
+  font-weight: 600;
+}
+
+/* 🎯 ГЛОБАЛЬНІ СТИЛІ для всіх текстів і елементів */
+:root.light,
+:root.light * {
+  color: var(--text);
+}
+
+:root.light h1,
+:root.light h2,
+:root.light h3,
+:root.light h4,
+:root.light h5,
+:root.light h6 {
+  color: var(--text);
+}
+
+:root.light label,
+:root.light span,
+:root.light p,
+:root.light div {
+  color: var(--text);
+}
+
+:root.light .muted,
+:root.light .hint,
+:root.light .subtitle {
+  color: var(--muted) !important;
+}
+
+/* Checkbox і radio */
+:root.light input[type="checkbox"],
+:root.light input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* Placeholder text */
+:root.light input::placeholder,
+:root.light textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* Scrollbar для світлої теми */
+:root.light ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:root.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+:root.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+:root.light * {
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+}
+
+/* Поросячий носик для світлої теми */
+:root.light .nose {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='%23fbcfe8'/><circle cx='9' cy='12' r='2.3' fill='%239f1239'/><circle cx='15' cy='12' r='2.3' fill='%239f1239'/></svg>");
+}
+
+:root.light .toggles .toggle {
+  border: 1px solid var(--border);
+  background: white;
+}
+
+:root.light .toggles .toggle:hover {
+  border-color: var(--border-hover);
+  background: var(--panel-2);
+}
+
+/* Textarea */
+:root.light textarea.input {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+:root.light textarea.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
+}
+
+/* File picker для світлої теми */
+:root.light .file-picker {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+:root.light .file-btn {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+:root.light .file-btn:hover {
+  background: var(--panel-2);
+  border-color: var(--border-hover);
+}
+
+:root.light .file-name {
+  color: var(--text);
+}
+
+:root.light .file-name.empty {
+  color: var(--muted);
+}
+
+/* Radio buttons */
+:root.light .radio-label {
+  color: var(--text) !important;
+}
+
+:root.light .radio-option:hover .radio-label {
+  color: var(--text) !important;
+}
+
+/* Source selector */
+:root.light .source-input label {
+  color: var(--text);
+}
+
+/* Subcard */
+:root.light .subcard {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+:root.light .subcard h4 {
+  color: var(--text);
+}
+
+:root.light .subcard .field .label {
+  color: var(--muted);
 }
 
 /* Стилі для UI оновлень */
