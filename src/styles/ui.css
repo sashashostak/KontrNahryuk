@@ -324,52 +324,73 @@ textarea.input{ resize: vertical; }
 
 /* Світла тема */
 :root.light{
-  --bg: #f5f7fa;
-  --panel: #ffffff;
-  --panel-2: #f8fafc;
-  --text: #1e293b;
-  --muted: #64748b;
+  /* М'які пастельні кольори для комфорту очей */
+  --bg: #f8f9fb;               /* дуже світлий сіро-блакитний */
+  --panel: #ffffff;            /* чистий білий */
+  --panel-2: #f3f4f6;          /* світло-сірий з теплим відтінком */
+  --text: #2d3748;             /* м'який темно-сірий замість чорного */
+  --muted: #718096;            /* сірий для другорядного тексту */
   
-  --accent: #1b72e8;
-  --accent-hover: #2a82ff;
-  --accent-pressed: #0f63de;
-  --focus: #3b92ff;
+  /* М'які акцентні кольори */
+  --accent: #4f87c8;           /* приглушений синій */
+  --accent-hover: #5b94d5;     /* світліший на hover */
+  --accent-pressed: #3f7ab8;   /* темніший при натисканні */
+  --focus: #7ba8db;            /* м'яка підсвітка фокуса */
   
+  /* Рожевий поросячий носик */
   --nose-bg: #ffc4c4;
   --nose-hole: #7a2f2f;
-  --nose-ring: rgba(0,0,0,.18);
+  --nose-ring: rgba(0,0,0,.12);  /* м'якша тінь для світлої теми */
   --nose-focus: #ff9fb3;
 }
 
 :root.light body {
-  background: linear-gradient(180deg, #f8fafc, var(--bg));
+  background: linear-gradient(180deg, #fcfcfd, var(--bg));
 }
 
 :root.light .sidebar {
-  border-right: 1px solid rgba(0,0,0,0.06);
+  border-right: 1px solid rgba(0,0,0,0.08);
+  background: #fafbfc;        /* ледь відрізняється від білого */
 }
 
 :root.light .topbar {
-  background: rgba(0,0,0,0.02);
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.8);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  backdrop-filter: blur(10px);  /* легке розмиття для глибини */
 }
 
 :root.light .card {
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);  /* м'якіша тінь */
 }
 
 :root.light .input, :root.light .btn {
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #fafbfc;        /* ледь сірий фон */
+}
+
+:root.light .input:focus {
+  border-color: var(--accent);
+  outline: 2px solid rgba(79, 135, 200, 0.15);  /* м'яке виділення */
 }
 
 :root.light .btn {
-  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  background: linear-gradient(135deg, #f7f8fa, #eef0f3);
+  color: var(--text);
+}
+
+:root.light .btn:hover {
+  background: linear-gradient(135deg, #eef0f3, #e5e7eb);
 }
 
 :root.light .btn.primary {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: linear-gradient(135deg, #4f87c8, #3f7ab8);
   color: white;
+  border: none;
+}
+
+:root.light .btn.primary:hover {
+  background: linear-gradient(135deg, #5b94d5, #4f87c8);
 }
 
 /* Стилі для UI оновлень */

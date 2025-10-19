@@ -13,13 +13,14 @@
 
 export class UILoggerService {
   private logContainer: HTMLElement | null = null;
-  private maxLogs: number = 1000; // Максимум логів для збереження
+  private maxLogs: number = 100; // Зменшено до 100 для простішого перегляду
   private autoScroll: boolean = true;
 
   constructor() {
     this.initialize();
     this.setupClearButton();
     this.setupCopyButton();
+    this.clearOldLogs(); // Очищення при запуску
   }
 
   /**
@@ -224,6 +225,16 @@ export class UILoggerService {
     if (this.logContainer) {
       this.logContainer.innerHTML = '';
     }
+  }
+
+  /**
+   * Очищення старих логів при запуску додатку
+   * Автоматично видаляє всі логи для чистого старту
+   */
+  private clearOldLogs(): void {
+    // Очищаємо логи при кожному запуску
+    this.clear();
+    this.log('info', '🧹 Логи очищено при запуску додатку');
   }
 
   /**

@@ -172,8 +172,14 @@ export class SettingsManager {
     const themeSelect = byId<HTMLSelectElement>('theme-select');
     if (themeSelect) {
       themeSelect.addEventListener('change', async () => {
-        await this.themeService.setTheme(themeSelect.value as any);
+        const selectedTheme = themeSelect.value as 'light' | 'dark' | 'system';
+        console.log('🎨 Зміна теми на:', selectedTheme);
+        await this.themeService.setTheme(selectedTheme);
+        console.log('✅ Тема збережена');
       });
+      console.log('✅ Theme selector event listener додано');
+    } else {
+      console.warn('⚠️ theme-select не знайдено в DOM');
     }
   }
 
