@@ -17,27 +17,12 @@ type Theme = 'light' | 'dark' | 'system';
 export class ThemeService {
   /**
    * Конструктор - ініціалізує ThemeService
-   * FIXED: Завантажує та застосовує тему при старті
+   * FIXED: НЕ завантажує тему автоматично, це робить SettingsManager
    */
   constructor() {
-    this.initializeTheme();
     this.setupSystemThemeListener();
-  }
-
-  /**
-   * Ініціалізація теми при завантаженні
-   * FIXED: Завантажує збережену тему та застосовує
-   * @private
-   */
-  private async initializeTheme(): Promise<void> {
-    try {
-      const theme = await window.api?.getSetting?.('theme', 'system');
-      this.applyTheme(theme);
-      log(`🎨 Тема ініціалізована: ${theme}`);
-    } catch (error) {
-      console.warn('Не вдалося завантажити тему, використовую system:', error);
-      this.applyTheme('system');
-    }
+    // Застосовуємо дефолтну тему, поки не завантажаться налаштування
+    this.applyTheme('system');
   }
 
   /**

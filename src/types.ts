@@ -4,7 +4,7 @@
  */
 
 // FIXED: Винесено з main.ts (рядок 1)
-export type Route = '/functions' | '/excel' | '/batch' | '/notes' | '/updates' | '/settings';
+export type Route = '/functions' | '/excel' | '/updates' | '/settings';
 
 // FIXED: Винесено з main.ts (рядок 1568)
 export type Mode = 'БЗ' | 'ЗС' | 'Обидва';

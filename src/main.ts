@@ -41,7 +41,6 @@ import { byId, log } from './helpers';
 // Managers
 import { SectionManager } from './SectionManager';
 import { SourceSelectionManager } from './SourceSelectionManager';
-import { BatchManager } from './BatchManager';
 import { UpdateManager } from './UpdateManager';
 import { ExcelProcessor } from './ExcelProcessor';
 
@@ -58,7 +57,6 @@ import { initializeFilePickers } from './filePicker';
 
 let sectionManager: SectionManager;
 let sourceSelectionManager: SourceSelectionManager;
-let batchManager: BatchManager;
 let updateManager: UpdateManager;
 let excelProcessor: ExcelProcessor;
 let themeService: ThemeService;
@@ -166,9 +164,6 @@ async function initializeManagers(): Promise<void> {
 
     sourceSelectionManager = new SourceSelectionManager();
     log('✅ SourceSelectionManager ініціалізовано');
-
-    batchManager = new BatchManager();
-    log('✅ BatchManager ініціалізовано');
 
     // 3. Ініціалізуємо менеджер оновлень
     updateManager = new UpdateManager();
@@ -446,7 +441,6 @@ window.addEventListener('load', () => {
   (window as any).__managers = {
     section: sectionManager,
     source: sourceSelectionManager,
-    batch: batchManager,
     update: updateManager,
     excel: excelProcessor,
     theme: themeService,

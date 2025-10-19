@@ -14,7 +14,6 @@
         <nav class="nav">
           <a href="#/functions" id="nav-func">📄 Накази</a>
           <a href="#/excel" id="nav-excel">📊 Excel обробка</a>
-          <a href="#/batch" id="nav-batch">Пакетна обробка</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -272,64 +271,6 @@
                 <div class="log-container">
                   <pre id="excel-log-body" class="log-body"></pre>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section data-route="/batch" class="route" hidden>
-          <div class="card">
-            <h3>Пакетна обробка Excel файлів</h3>
-            <p class="subtitle">Індексація бійців з помісячних Excel звітів</p>
-
-            <div class="form">
-              <label class="field">
-                <span class="label">Вхідна папка з Excel файлами</span>
-                <div class="row">
-                  <input class="input" id="batch-input-folder" placeholder="Оберіть папку з файлами…" readonly />
-                  <button class="btn" id="btn-choose-batch-folder">Обрати папку</button>
-                </div>
-                <small class="hint">Папка з помісячними Excel файлами (листопад→грудень→січень→...)</small>
-              </label>
-
-              <label class="field">
-                <span class="label">Файл результату</span>
-                <div class="row">
-                  <input class="input" id="batch-output-file" placeholder="Автоматично: Result_YYYYMMDD-HHmm.xlsx" readonly />
-                  <button class="btn" id="btn-choose-batch-output">Обрати місце</button>
-                </div>
-                <small class="hint">За замовчуванням збережеться у вхідній папці</small>
-              </label>
-            </div>
-
-            <div class="batch-controls">
-              <button class="btn primary" id="btn-start-batch" disabled>
-                <span id="batch-btn-text">Обробити</span>
-              </button>
-              <button class="btn ghost" id="btn-cancel-batch" disabled>Скасувати</button>
-            </div>
-
-            <div class="batch-progress" id="batch-progress" hidden>
-              <div class="progress-info">
-                <div class="progress-bar">
-                  <div class="progress-fill" id="batch-progress-fill"></div>
-                </div>
-                <div class="progress-details">
-                  <span id="batch-progress-percent">0%</span>
-                  <span id="batch-progress-status">Підготовка...</span>
-                </div>
-                <p id="batch-progress-detail">Файл 0/0, лист 0/0</p>
-              </div>
-            </div>
-
-            <div class="batch-log">
-              <h4>Лог виконання</h4>
-              <div class="log-controls">
-                <button class="btn ghost small" id="btn-clear-batch-log">Очистити</button>
-                <button class="btn ghost small" id="btn-save-batch-log">Зберегти лог</button>
-              </div>
-              <div class="log-container">
-                <pre id="batch-log-body" class="log-body"></pre>
               </div>
             </div>
           </div>
