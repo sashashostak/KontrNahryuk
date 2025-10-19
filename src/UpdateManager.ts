@@ -124,12 +124,35 @@ export class UpdateManager {
         if (updateAvailableDiv) {
           // Заповнюємо дані про оновлення
           const newVersionSpan = byId('new-version');
+          const updateSizeSpan = byId('update-size');
           const updateDateSpan = byId('update-date');
           const releasNotesLink = byId<HTMLAnchorElement>('release-notes');
           
           if (newVersionSpan) newVersionSpan.textContent = latestVersion;
           if (updateDateSpan) updateDateSpan.textContent = new Date(releaseInfo.published_at).toLocaleDateString();
           if (releasNotesLink) releasNotesLink.href = releaseInfo.html_url;
+          
+          // Визначаємо розмір файлу (patch пріоритетніше за portable)
+          const currentVersion = await (window as any).api?.getVersion?.();
+          const patchAsset = releaseInfo.assets?.find((asset: any) =>
+            asset.name.toLowerCase().includes('patch') && 
+            asset.name.includes(currentVersion) &&
+            asset.name.endsWith('.zip')
+          );
+          const portableAsset = releaseInfo.assets?.find((asset: any) =>
+            asset.name.toLowerCase().includes('portable') && 
+            asset.name.endsWith('.zip')
+          );
+          const updateAsset = patchAsset || portableAsset;
+          
+          if (updateSizeSpan && updateAsset) {
+            const sizeMB = (updateAsset.size / 1024 / 1024).toFixed(2);
+            const type = patchAsset ? '(patch)' : '(portable)';
+            updateSizeSpan.textContent = `${sizeMB} MB ${type}`;
+          }
+          
+          // Показуємо release notes якщо є
+          this.displayReleaseNotes(releaseInfo.body, false);
           
           // Показуємо блок оновлення
           updateAvailableDiv.hidden = false;
@@ -138,9 +161,14 @@ export class UpdateManager {
           this.currentUpdateInfo = { hasUpdate, latestVersion, releaseInfo };
         }
       } else {
-        // Актуальна версія - ховаємо блок оновлення і показуємо статус
+        // Актуальна версія - показуємо release notes поточної версії
         if (statusDiv) statusDiv.textContent = 'Актуальна версія';
         if (updateAvailableDiv) updateAvailableDiv.hidden = true;
+        
+        // Показуємо release notes для поточної версії
+        if (releaseInfo) {
+          this.displayReleaseNotes(releaseInfo.body, true);
+        }
       }
     } catch (error) {
       console.error('Помилка перевірки оновлень:', error);
@@ -485,4 +513,62 @@ export class UpdateManager {
       console.error('Помилка збереження логу:', error);
     }
   }
+
+  /**
+   * Відображення release notes з форматуванням Markdown
+   * @param body - Текст опису релізу з GitHub (Markdown)
+   * @param isCurrentVersion - Чи це опис поточної версії (показується в іншому місці)
+   * @private
+   */
+  private displayReleaseNotes(body: string | undefined, isCurrentVersion: boolean = false): void {
+    const sectionId = isCurrentVersion ? 'current-release-notes-section' : 'release-notes-section';
+    const contentId = isCurrentVersion ? 'current-release-notes-content' : 'release-notes-content';
+    
+    const section = byId(sectionId);
+    const content = byId(contentId);
+    
+    if (!section || !content) return;
+    
+    if (!body || body.trim() === '') {
+      section.style.display = 'none';
+      return;
+    }
+    
+    // Простий Markdown→HTML конвертер
+    let html = body
+      // Заголовки
+      .replace(/^### (.+)$/gm, '<h6 style="margin: 12px 0 6px; color: #60a5fa;">$1</h6>')
+      .replace(/^## (.+)$/gm, '<h5 style="margin: 16px 0 8px; color: #60a5fa;">$1</h5>')
+      .replace(/^# (.+)$/gm, '<h4 style="margin: 20px 0 10px; color: #60a5fa;">$1</h4>')
+      
+      // Списки
+      .replace(/^\- (.+)$/gm, '<li style="margin-left: 20px;">$1</li>')
+      .replace(/^[\*\+] (.+)$/gm, '<li style="margin-left: 20px;">$1</li>')
+      
+      // Жирний текст
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      
+      // Курсив
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      
+      // Код
+      .replace(/`(.+?)`/g, '<code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
+      
+      // Emoji checkmarks
+      .replace(/- \[x\]/gi, '✅')
+      .replace(/- \[ \]/g, '☐')
+      
+      // Параграфи (подвійний перенос рядка)
+      .replace(/\n\n/g, '</p><p style="margin: 8px 0;">')
+      
+      // Одиночні переноси як <br>
+      .replace(/\n/g, '<br>');
+    
+    // Обгортаємо в параграф
+    html = `<p style="margin: 8px 0;">${html}</p>`;
+    
+    content.innerHTML = html;
+    section.style.display = 'block';
+  }
 }
+

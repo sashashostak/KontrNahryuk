@@ -194,28 +194,40 @@ class UpdateService extends EventEmitter {
     this.downloadInProgress = true
 
     try {
-      // Крок 1: Знайти portable файл
+      // Крок 1: Знайти patch або portable файл
       const release = updateInfo.releaseInfo
       if (!release) {
         throw new Error('Інформація про реліз відсутня')
       }
 
+      // Спочатку шукаємо patch файл (пріоритет для економії трафіку)
+      const currentVersion = app.getVersion()
+      const patchAsset = release.assets?.find((asset: any) =>
+        asset.name.toLowerCase().includes('patch') && 
+        asset.name.includes(currentVersion) &&
+        asset.name.endsWith('.zip')
+      )
+
+      // Якщо patch не знайдено, шукаємо portable
       const portableAsset = release.assets?.find((asset: any) =>
         asset.name.toLowerCase().includes('portable') && 
         asset.name.endsWith('.zip')
       )
 
-      if (!portableAsset) {
-        this.log('⚠️ Portable файл не знайдено, відкриваю GitHub')
+      const updateAsset = patchAsset || portableAsset
+
+      if (!updateAsset) {
+        this.log('⚠️ Файли оновлення не знайдено, відкриваю GitHub')
         shell.openExternal(release.html_url)
         throw new Error('Автоматичне оновлення недоступне')
       }
 
-      this.log(`📥 Завантаження файлу: ${portableAsset.name}`)
+      const isPatch = !!patchAsset
+      this.log(`📥 Завантаження ${isPatch ? 'patch' : 'portable'} файлу: ${updateAsset.name}`)
       
       // Крок 2: Завантажити з прогресом
-      const downloadPath = path.join(this.updateBasePath, portableAsset.name)
-      await this.downloadWithProgress(portableAsset.browser_download_url, downloadPath)
+      const downloadPath = path.join(this.updateBasePath, updateAsset.name)
+      await this.downloadWithProgress(updateAsset.browser_download_url, downloadPath)
 
       this.log(`✅ Файл завантажено: ${downloadPath}`)
 
@@ -426,7 +438,7 @@ class UpdateService extends EventEmitter {
       actualExtractPath = path.join(extractPath, entries[0])
     }
 
-    // Знайти .exe файл рекурсивно
+    // Знайти .exe файл рекурсивно (для full portable)
     const findExeFile = (dir: string): string | null => {
       const files = fs.readdirSync(dir)
       for (const file of files) {
@@ -444,17 +456,17 @@ class UpdateService extends EventEmitter {
 
     const newExePath = findExeFile(actualExtractPath)
 
-    if (!newExePath) {
-      throw new Error('Не знайдено .exe файл в оновленні')
-    }
+    // Якщо знайдено .exe - це full portable, замінюємо через .bat
+    if (newExePath) {
+      this.log('📦 Full portable виявлено, оновлення через .bat скрипт')
+      
+      const tempExePath = path.join(currentDir, `${path.basename(currentExePath)}.new`)
 
-    const tempExePath = path.join(currentDir, `${path.basename(currentExePath)}.new`)
+      // Скопіювати новий .exe як тимчасовий
+      fs.copyFileSync(newExePath, tempExePath)
 
-    // Скопіювати новий .exe як тимчасовий
-    fs.copyFileSync(newExePath, tempExePath)
-
-    // Створити .bat скрипт для заміни після закриття
-    const batScript = `
+      // Створити .bat скрипт для заміни після закриття
+      const batScript = `
 @echo off
 echo Оновлення KontrNahryuk...
 timeout /t 2 /nobreak > nul
@@ -473,17 +485,60 @@ start "" "${currentExePath}"
 del "%~f0"
 `.trim()
 
-    const batPath = path.join(currentDir, 'update.bat')
-    fs.writeFileSync(batPath, batScript)
+      const batPath = path.join(currentDir, 'update.bat')
+      fs.writeFileSync(batPath, batScript)
 
-    // Запустити .bat скрипт
-    spawn('cmd.exe', ['/c', batPath], {
-      detached: true,
-      stdio: 'ignore'
-    }).unref()
-  }
+      // Запустити .bat скрипт
+      spawn('cmd.exe', ['/c', batPath], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref()
+      
+    } else {
+      // Це patch файл - замінюємо тільки файли в resources/app/
+      this.log('🔄 Patch виявлено, оновлення файлів resources/app/')
+      
+      // Перевіряємо чи є папка resources/app в patch
+      const resourcesPath = path.join(actualExtractPath, 'resources', 'app')
+      
+      if (!fs.existsSync(resourcesPath)) {
+        throw new Error('Patch не містить папки resources/app/')
+      }
 
-  /**
+      // Шлях до поточної папки resources/app
+      const currentResourcesPath = path.join(currentDir, 'resources', 'app')
+      
+      if (!fs.existsSync(currentResourcesPath)) {
+        throw new Error('Поточна папка resources/app/ не знайдена')
+      }
+
+      // Копіюємо файли рекурсивно
+      const copyRecursive = (src: string, dest: string) => {
+        if (!fs.existsSync(src)) return
+        
+        const stat = fs.statSync(src)
+        if (stat.isDirectory()) {
+          if (!fs.existsSync(dest)) {
+            fs.mkdirSync(dest, { recursive: true })
+          }
+          const files = fs.readdirSync(src)
+          for (const file of files) {
+            copyRecursive(path.join(src, file), path.join(dest, file))
+          }
+        } else {
+          fs.copyFileSync(src, dest)
+          this.log(`  ✓ ${path.relative(resourcesPath, src)}`)
+        }
+      }
+
+      copyRecursive(resourcesPath, currentResourcesPath)
+      this.log('✅ Patch файли замінено, перезапуск...')
+      
+      // Для patch перезапускаємо просто через relaunch
+      app.relaunch()
+      app.exit(0)
+    }
+  }  /**
    * Очистити тимчасові файли
    */
   private async cleanupTempFiles(zipPath: string, extractPath: string): Promise<void> {

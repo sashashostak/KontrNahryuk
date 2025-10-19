@@ -15,7 +15,7 @@
           <a href="#/functions" id="nav-func">📄 Накази</a>
           <a href="#/excel" id="nav-excel">📊 Excel обробка</a>
           <a href="#/batch" id="nav-batch">Пакетна обробка</a>
-          <!-- <a href="#/notes" id="nav-notes">Notes</a> --> <!-- REMOVED in v1.4.3 for testing auto-update -->
+          <a href="#/notes" id="nav-notes">Notes</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -336,7 +336,17 @@
           </div>
         </section>
 
-        <!-- Notes section removed in v1.4.3 for testing auto-update system -->
+        <section data-route="/notes" class="route" hidden>
+          <div class="card">
+            <h3>Notes</h3>
+            <label style="display:flex; flex-direction:column; gap:8px;">
+              Додати нотатку:
+              <textarea class="input" id="note-input" placeholder="Напишіть щось…"></textarea>
+            </label>
+            <button class="btn" id="btn-add-note">Додати</button>
+            <ul id="notes-list" style="margin-top:12px"></ul>
+          </div>
+        </section>
 
         <section data-route="/updates" class="route" hidden>
           <div class="card">
@@ -348,11 +358,24 @@
                 <p><strong>Статус:</strong> <span id="update-status">Натисніть "Знайти оновлення"</span></p>
               </div>
               
+              <!-- Release Notes для поточної версії (показується завжди) -->
+              <div id="current-release-notes-section" class="release-notes-section" style="margin-top: 16px; display: none;">
+                <h5>📝 Інформація про поточну версію:</h5>
+                <div id="current-release-notes-content" class="release-notes-content" style="max-height: 300px; overflow-y: auto; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 8px;"></div>
+              </div>
+              
               <div id="update-available" class="update-available" hidden>
                 <div class="update-details">
                   <h4>Доступна нова версія: <span id="new-version"></span></h4>
                   <p>Розмір: <span id="update-size"></span></p>
                   <p>Опубліковано: <span id="update-date"></span></p>
+                  
+                  <!-- Release Notes -->
+                  <div id="release-notes-section" class="release-notes-section" style="margin-top: 16px; display: none;">
+                    <h5>📝 Що нового:</h5>
+                    <div id="release-notes-content" class="release-notes-content" style="max-height: 300px; overflow-y: auto; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 8px;"></div>
+                  </div>
+                  
                   <div class="update-actions">
                     <a href="#" id="release-notes" target="_blank" class="link">Список змін</a>
                     <button class="btn primary" id="btn-auto-update">🐷 Оновити Нахрюк</button>
