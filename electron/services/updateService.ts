@@ -518,13 +518,6 @@ del "%~f0"
       // Це patch файл - замінюємо тільки файли в resources/app/
       this.log('🔄 Patch виявлено, оновлення файлів resources/app/')
       
-      // Перевіряємо чи є папка resources/app в patch
-      const resourcesPath = path.join(actualExtractPath, 'resources', 'app')
-      
-      if (!fs.existsSync(resourcesPath)) {
-        throw new Error('Patch не містить папки resources/app/')
-      }
-
       // Шлях до поточної папки resources/app
       const currentResourcesPath = path.join(currentDir, 'resources', 'app')
       
@@ -532,8 +525,16 @@ del "%~f0"
         throw new Error('Поточна папка resources/app/ не знайдена')
       }
 
-      // Копіюємо файли рекурсивно
-      const copyRecursive = (src: string, dest: string) => {
+      // Перевіряємо дві можливі структури патчу:
+      // 1. Нова структура: dist/ + package.json (безпосередньо в actualExtractPath)
+      // 2. Стара структура: resources/app/ (всередині actualExtractPath)
+      
+      const distFolder = path.join(actualExtractPath, 'dist')
+      const packageJson = path.join(actualExtractPath, 'package.json')
+      const resourcesPath = path.join(actualExtractPath, 'resources', 'app')
+      
+      // Копіювання рекурсивне
+      const copyRecursive = (src: string, dest: string, basePath?: string) => {
         if (!fs.existsSync(src)) return
         
         const stat = fs.statSync(src)
@@ -543,16 +544,40 @@ del "%~f0"
           }
           const files = fs.readdirSync(src)
           for (const file of files) {
-            copyRecursive(path.join(src, file), path.join(dest, file))
+            copyRecursive(path.join(src, file), path.join(dest, file), basePath || src)
           }
         } else {
           fs.copyFileSync(src, dest)
-          this.log(`  ✓ ${path.relative(resourcesPath, src)}`)
+          const relativePath = basePath ? path.relative(basePath, src) : path.basename(src)
+          this.log(`  ✓ ${relativePath}`)
         }
       }
-
-      copyRecursive(resourcesPath, currentResourcesPath)
-      this.log('✅ Patch файли замінено, перезапуск...')
+      
+      // Нова структура: dist/ + package.json
+      if (fs.existsSync(distFolder) && fs.existsSync(packageJson)) {
+        this.log('📦 Patch нової структури (dist/ + package.json)')
+        
+        // Копіюємо dist/
+        const targetDist = path.join(currentResourcesPath, 'dist')
+        copyRecursive(distFolder, targetDist, distFolder)
+        
+        // Копіюємо package.json
+        fs.copyFileSync(packageJson, path.join(currentResourcesPath, 'package.json'))
+        this.log('  ✓ package.json')
+        
+        this.log('✅ Patch файли замінено (нова структура), перезапуск...')
+        
+      // Стара структура: resources/app/
+      } else if (fs.existsSync(resourcesPath)) {
+        this.log('📦 Patch старої структури (resources/app/)')
+        
+        copyRecursive(resourcesPath, currentResourcesPath, resourcesPath)
+        
+        this.log('✅ Patch файли замінено (стара структура), перезапуск...')
+        
+      } else {
+        throw new Error('Patch не містить ні dist/ + package.json, ні resources/app/')
+      }
       
       // Для patch перезапускаємо просто через relaunch
       app.relaunch()
