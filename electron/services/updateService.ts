@@ -202,11 +202,31 @@ class UpdateService extends EventEmitter {
 
       // Спочатку шукаємо patch файл (пріоритет для економії трафіку)
       const currentVersion = app.getVersion()
-      const patchAsset = release.assets?.find((asset: any) =>
+      
+      // Шукаємо прямий патч для поточної версії
+      let patchAsset = release.assets?.find((asset: any) =>
         asset.name.toLowerCase().includes('patch') && 
         asset.name.includes(currentVersion) &&
         asset.name.endsWith('.zip')
       )
+
+      // Якщо прямий патч не знайдено, шукаємо ланцюжок патчів
+      if (!patchAsset) {
+        this.log(`⚠️ Прямий патч ${currentVersion} → ${updateInfo.latestVersion} не знайдено`)
+        this.log(`🔗 Шукаю ланцюжок патчів через проміжні версії...`)
+        
+        const patchChain = await this.findPatchChain(currentVersion, updateInfo.latestVersion)
+        
+        if (patchChain.length > 0) {
+          this.log(`✅ Знайдено ланцюжок оновлень: ${patchChain.map(p => p.version).join(' → ')}`)
+          this.log(`📦 Буде завантажено ${patchChain.length} патчів (замість portable)`)
+          
+          // Завантажуємо та встановлюємо патчі по черзі
+          return await this.downloadAndApplyPatchChain(patchChain)
+        } else {
+          this.log(`⚠️ Ланцюжок патчів не знайдено`)
+        }
+      }
 
       // Якщо patch не знайдено, шукаємо portable
       const portableAsset = release.assets?.find((asset: any) =>
@@ -656,6 +676,217 @@ del "%~f0"
 
     this.log(`   = Версії однакові`)
     return false
+  }
+
+  /**
+   * Знайти ланцюжок патчів від поточної версії до цільової
+   * 
+   * @param {string} fromVersion - Початкова версія (поточна)
+   * @param {string} toVersion - Цільова версія (нова)
+   * @returns {Promise<Array<{version: string, release: any, patchAsset: any}>>} Ланцюжок патчів
+   */
+  private async findPatchChain(fromVersion: string, toVersion: string): Promise<Array<{version: string, release: any, patchAsset: any}>> {
+    try {
+      // Отримати всі релізи з GitHub
+      const url = `https://api.github.com/repos/${this.GITHUB_REPO}/releases`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': `KontrNahryuk/${this.currentVersion}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`GitHub API помилка: ${response.status}`)
+      }
+
+      const releases = await response.json()
+      
+      // Парсимо версії
+      const cleanFrom = fromVersion.replace(/^[vV]/, '')
+      const cleanTo = toVersion.replace(/^[vV]/, '')
+      
+      const fromParts = cleanFrom.split('.').map(p => parseInt(p, 10) || 0)
+      const toParts = cleanTo.split('.').map(p => parseInt(p, 10) || 0)
+      
+      // Знаходимо всі проміжні версії
+      const chain: Array<{version: string, release: any, patchAsset: any}> = []
+      let currentVer = cleanFrom
+      
+      // Генеруємо послідовність версій (тільки patch increment)
+      // Наприклад: 1.4.5 -> 1.4.6 -> 1.4.7 -> 1.4.8 -> 1.4.9
+      const [major, minor, patchStart] = fromParts
+      const patchEnd = toParts[2]
+      
+      for (let patch = patchStart + 1; patch <= patchEnd; patch++) {
+        const targetVersion = `${major}.${minor}.${patch}`
+        
+        // Знаходимо реліз для цієї версії
+        const release = releases.find((r: any) => {
+          const releaseVer = (r.tag_name || r.name || '').replace(/^[vV]/, '')
+          return releaseVer === targetVersion
+        })
+        
+        if (!release) {
+          this.log(`   ⚠️ Реліз v${targetVersion} не знайдено на GitHub`)
+          return [] // Ланцюжок розірваний
+        }
+        
+        // Шукаємо патч від попередньої версії до цієї
+        const prevVersion = `${major}.${minor}.${patch - 1}`
+        const patchAsset = release.assets?.find((asset: any) =>
+          asset.name.toLowerCase().includes('patch') &&
+          asset.name.includes(prevVersion) &&
+          asset.name.endsWith('.zip')
+        )
+        
+        if (!patchAsset) {
+          this.log(`   ⚠️ Патч v${prevVersion} → v${targetVersion} не знайдено`)
+          return [] // Ланцюжок розірваний
+        }
+        
+        chain.push({
+          version: targetVersion,
+          release: release,
+          patchAsset: patchAsset
+        })
+        
+        currentVer = targetVersion
+      }
+      
+      return chain
+      
+    } catch (error) {
+      this.log(`❌ Помилка пошуку ланцюжка патчів: ${error}`)
+      return []
+    }
+  }
+
+  /**
+   * Завантажити та застосувати ланцюжок патчів
+   * 
+   * @param {Array} patchChain - Масив патчів для застосування
+   * @returns {Promise<DownloadResult>} Результат оновлення
+   */
+  private async downloadAndApplyPatchChain(patchChain: Array<{version: string, release: any, patchAsset: any}>): Promise<DownloadResult> {
+    try {
+      this.log(`📦 Застосування ланцюжка з ${patchChain.length} патчів...`)
+      
+      for (let i = 0; i < patchChain.length; i++) {
+        const patch = patchChain[i]
+        const progress = `[${i + 1}/${patchChain.length}]`
+        
+        this.log(`${progress} Оновлення до v${patch.version}...`)
+        this.emit('status', { message: `Завантаження патчу ${i + 1}/${patchChain.length}...` })
+        
+        // Завантажити патч
+        const downloadPath = path.join(this.updateBasePath, patch.patchAsset.name)
+        await this.downloadWithProgress(patch.patchAsset.browser_download_url, downloadPath)
+        
+        this.log(`${progress} ✅ Завантажено: ${patch.patchAsset.name}`)
+        
+        // Розпакувати
+        this.emit('status', { message: `Встановлення патчу ${i + 1}/${patchChain.length}...` })
+        const extractPath = path.join(this.updateBasePath, `extracted-${patch.version}`)
+        await this.extractZip(downloadPath, extractPath)
+        
+        // Застосувати патч (копіювання файлів)
+        this.emit('status', { message: `Застосування патчу ${i + 1}/${patchChain.length}...` })
+        await this.copyPatchFiles(extractPath)
+        
+        this.log(`${progress} ✅ Патч застосовано`)
+        
+        // Видалити тимчасові файли
+        try {
+          fs.unlinkSync(downloadPath)
+          fs.rmSync(extractPath, { recursive: true, force: true })
+        } catch (cleanupError) {
+          this.log(`⚠️ Помилка очищення: ${cleanupError}`)
+        }
+      }
+      
+      this.log(`✅ Всі патчі застосовано успішно!`)
+      this.emit('status', { message: 'Оновлення завершено. Перезапуск...' })
+      
+      // Перезапустити після всіх патчів
+      app.relaunch()
+      app.exit(0)
+      
+      return {
+        success: true,
+        path: this.updateBasePath
+      }
+      
+    } catch (error) {
+      this.log(`❌ Помилка застосування ланцюжка патчів: ${error}`)
+      return {
+        success: false,
+        path: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    } finally {
+      this.downloadInProgress = false
+    }
+  }
+
+  /**
+   * Скопіювати файли патчу до resources/app
+   * 
+   * @param {string} extractPath - Шлях до розпакованого патчу
+   */
+  private async copyPatchFiles(extractPath: string): Promise<void> {
+    // Поточна папка app (де виконується electron)
+    const currentDir = path.dirname(app.getPath('exe'))
+    
+    // Перевіряємо структуру патчу
+    let actualExtractPath = extractPath
+    const distFolder = path.join(extractPath, 'dist')
+    const packageJson = path.join(extractPath, 'package.json')
+    
+    // Якщо є dist/, працюємо з цією структурою
+    if (fs.existsSync(distFolder) && fs.existsSync(packageJson)) {
+      // Патч містить dist/ + package.json
+      const targetPath = path.join(currentDir, 'resources', 'app')
+      
+      if (!fs.existsSync(targetPath)) {
+        throw new Error('Папка resources/app/ не знайдена')
+      }
+      
+      // Копіюємо dist/
+      const targetDist = path.join(targetPath, 'dist')
+      this.copyRecursive(distFolder, targetDist)
+      
+      // Копіюємо package.json
+      fs.copyFileSync(packageJson, path.join(targetPath, 'package.json'))
+      this.log('  ✓ package.json')
+      
+      this.log('✅ Файли патчу скопійовано')
+      
+    } else {
+      throw new Error('Невідома структура патчу')
+    }
+  }
+
+  /**
+   * Рекурсивне копіювання файлів
+   */
+  private copyRecursive(src: string, dest: string): void {
+    if (!fs.existsSync(src)) return
+    
+    const stat = fs.statSync(src)
+    if (stat.isDirectory()) {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true })
+      }
+      const files = fs.readdirSync(src)
+      for (const file of files) {
+        this.copyRecursive(path.join(src, file), path.join(dest, file))
+      }
+    } else {
+      fs.copyFileSync(src, dest)
+      this.log(`  ✓ ${path.relative(src, dest)}`)
+    }
   }
 
   /**
