@@ -485,33 +485,34 @@ class UpdateService extends EventEmitter {
       // Скопіювати новий .exe як тимчасовий
       fs.copyFileSync(newExePath, tempExePath)
 
-      // Створити .bat скрипт для заміни після закриття
-      const batScript = `
-@echo off
+      // Створити .bat скрипт для заміни після закриття (з підтримкою Unicode шляхів)
+      const batScript = `@echo off
+chcp 65001 > nul
 echo Оновлення KontrNahryuk...
 timeout /t 2 /nobreak > nul
 
 :retry
-del /f /q "${currentExePath}"
-if exist "${currentExePath}" (
+del /f /q "%~dp0${path.basename(currentExePath)}"
+if exist "%~dp0${path.basename(currentExePath)}" (
   timeout /t 1 /nobreak > nul
   goto retry
 )
 
-move /y "${tempExePath}" "${currentExePath}"
+move /y "%~dp0${path.basename(tempExePath)}" "%~dp0${path.basename(currentExePath)}"
 
 echo Оновлення завершено!
-start "" "${currentExePath}"
+start "" "%~dp0${path.basename(currentExePath)}"
 del "%~f0"
-`.trim()
+`
 
       const batPath = path.join(currentDir, 'update.bat')
-      fs.writeFileSync(batPath, batScript)
+      fs.writeFileSync(batPath, batScript, { encoding: 'utf8' })
 
       // Запустити .bat скрипт
       spawn('cmd.exe', ['/c', batPath], {
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        cwd: currentDir
       }).unref()
       
     } else {
