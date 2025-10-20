@@ -5,9 +5,9 @@ interface OrderProcessPayload {
   wordBuf: ArrayBuffer
   outputPath: string
   excelPath?: string
+  searchText?: string
   flags: {
     saveDBPath: boolean
-    is2BSP: boolean
     isOrder: boolean
     tokens: boolean
     autoOpen: boolean

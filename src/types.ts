@@ -132,7 +132,6 @@ export interface BatchProgress {
 
 // FIXED: Додано інтерфейс для налаштувань
 export interface AppSettings {
-  is2BSP?: boolean;
   isOrder?: boolean;
   autoOpen?: boolean;
   showTokens?: boolean;

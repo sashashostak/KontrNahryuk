@@ -73,16 +73,13 @@ let uiLoggerService: UILoggerService;
 async function loadSettings(): Promise<void> {
   try {
     // Load checkbox states
-    const is2BSP = await window.api?.getSetting?.('is2BSP', true);
     const isOrder = await window.api?.getSetting?.('isOrder', false);
     const autoOpen = await window.api?.getSetting?.('autoOpen', true);
     
     // Apply saved states
-    const is2BSPCheckbox = byId<HTMLInputElement>('t-2bsp');
     const isOrderCheckbox = byId<HTMLInputElement>('t-order');
     const autoOpenCheckbox = byId<HTMLInputElement>('t-autopen');
     
-    if (is2BSPCheckbox) is2BSPCheckbox.checked = is2BSP;
     if (isOrderCheckbox) isOrderCheckbox.checked = isOrder;
     if (autoOpenCheckbox) autoOpenCheckbox.checked = autoOpen;
   } catch (err) {
@@ -95,9 +92,8 @@ async function loadSettings(): Promise<void> {
  * FIXED: Підписка на зміни чекбоксів основних налаштувань
  */
 function setupSettingsAutoSave(): void {
-  const checkboxes = ['t-2bsp', 't-order', 't-autopen'];
+  const checkboxes = ['t-order', 't-autopen'];
   const settingsMap: Record<string, string> = {
-    't-2bsp': 'is2BSP', 
     't-order': 'isOrder',
     't-autopen': 'autoOpen'
   };
@@ -190,10 +186,10 @@ function setupGlobalEventListeners(): void {
       // 1. Отримання значень з форми
       const sourceType = document.querySelector<HTMLInputElement>('input[name="source-type"]:checked')?.value || 'single-file';
       const resultPath = byId<HTMLInputElement>('result-path')?.value;
-      const is2BSP = byId<HTMLInputElement>('t-2bsp')?.checked || false;
       const isOrder = byId<HTMLInputElement>('t-order')?.checked || false;
       const autoOpen = byId<HTMLInputElement>('t-autopen')?.checked || false;
       const excelPath = byId<HTMLInputElement>('excel-path')?.value;
+      const searchText = byId<HTMLTextAreaElement>('order-text-input')?.value?.trim() || '';
       
       // 2. Перевірка обов'язкових полів
       if (!resultPath) {
@@ -254,14 +250,14 @@ function setupGlobalEventListeners(): void {
         wordBuf: fileBuffer,
         outputPath: resultPath,
         excelPath: isOrder && excelPath ? excelPath : undefined,
+        searchText: searchText, // Додаємо текст для пошуку
         flags: {
           saveDBPath: false,
-          is2BSP: is2BSP,
           isOrder: isOrder,
           tokens: false,
           autoOpen: autoOpen
         },
-        mode: is2BSP ? '2BSP' : (isOrder ? 'order' : 'default')
+        mode: isOrder ? 'order' : (searchText ? 'search' : 'default')
       };
       
       // Очищуємо логи перед початком обробки

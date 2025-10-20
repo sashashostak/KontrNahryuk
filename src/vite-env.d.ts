@@ -4,8 +4,8 @@ interface OrderProcessPayload {
   wordBuf: ArrayBuffer
   outputPath: string
   mode?: string
+  searchText?: string
   flags: {
-    is2BSP: boolean
     isOrder: boolean
     tokens: boolean
     autoOpen: boolean

@@ -1101,28 +1101,29 @@ ipcMain.handle('order:process', async (e, payload) => {
       console.log(`[order:process] Перша строка наказу: "${firstLine}"`)
       console.log(`[order:process] Перші 3 абзаци:`, paragraphs.slice(0, 3))
       
-      // 2БСП режим - пошук за ключовим словом з контекстом структури
-      if (payload.flags.is2BSP) {
+      // Режим пошуку по тексту (якщо введено текст і не вибрано Розпорядження)
+      if (!payload.flags.isOrder && payload.searchText && payload.searchText.trim()) {
         try {
-          console.log('[order:process] Режим 2БСП: пошук за ключовим словом "2-го батальйону" з збереженням структури...')
+          const searchToken = payload.searchText.trim();
+          console.log(`[order:process] Режим пошуку тексту: пошук за "${searchToken}" з збереженням структури...`)
         
-          // Знайти збіги в структурі наказу з контекстом
-          const matchedItems = findInOrderStructure(orderStructure, "2-го батальйону")
-          console.log(`[order:process] Збігів знайдено за ключовим словом "2-го батальйону": ${matchedItems.length}`)
+          // Знайти збіги в структурі наказу
+          const matchedItems = findInOrderStructure(orderStructure, searchToken)
+          console.log(`[order:process] Збігів знайдено за текстом "${searchToken}": ${matchedItems.length}`)
           
-          // Показати перші кілька знайдених збігів з їх типами
+          // Показати перші кілька знайдених збігів
           if (matchedItems.length > 0) {
-            console.log('[order:process] Перші 3 знайдені елементи з контекстом:')
+            console.log('[order:process] Перші 3 знайдені елементи:')
             for (let i = 0; i < Math.min(3, matchedItems.length); i++) {
               const item = matchedItems[i]
               console.log(`[order:process] Збіг #${i+1} [${item.type}${item.number ? ` ${item.number}` : ''}]: "${item.text.substring(0, 100)}..."`)
             }
           }
           
-          // Додати 2БСП результат до списку
+          // Додати результат до списку
           results.push({
-            type: '2БСП',
-            path: payload.outputPath.replace('.docx', '_2БСП.docx'),
+            type: 'Пошук',
+            path: payload.outputPath.replace('.docx', '_Пошук.docx'),
             stats: {
               tokens: 1,
               paragraphs: formattedParagraphs.length,
@@ -1131,13 +1132,13 @@ ipcMain.handle('order:process', async (e, payload) => {
             }
           })
           
-          // Створити 2БСП документ з першою строкою та структурою
-          const bspPath = payload.outputPath.replace('.docx', '_2БСП.docx')
-          await createStructuredResultDocument(matchedItems, bspPath, firstLine)
+          // Створити документ з результатами
+          const searchPath = payload.outputPath.replace('.docx', '_Пошук.docx')
+          await createStructuredResultDocument(matchedItems, searchPath, firstLine)
           
         } catch (err: any) {
-          console.error('[order:process] 2БСП processing error:', err)
-          return { ok: false, error: `2БСП обробка: ${err instanceof Error ? err.message : String(err)}` }
+          console.error('[order:process] Search text processing error:', err)
+          return { ok: false, error: `Пошук тексту: ${err instanceof Error ? err.message : String(err)}` }
         }
       }
       
@@ -1203,9 +1204,9 @@ ipcMain.handle('order:process', async (e, payload) => {
         }
       }
       
-      // Перевірка що хоча б один режим включений
-      if (!payload.flags.is2BSP && !payload.flags.isOrder) {
-        return { ok: false, error: 'Оберіть хоча б один режим: 2БСП або Розпорядження' }
+      // Перевірка що введено текст для пошуку або вибрано Розпорядження
+      if (!payload.flags.isOrder && (!payload.searchText || !payload.searchText.trim())) {
+        return { ok: false, error: 'Введіть текст для пошуку або оберіть режим Розпорядження' }
       }
       
       // Підсумок створених документів
