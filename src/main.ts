@@ -182,15 +182,6 @@ function setupGlobalEventListeners(): void {
     }
   });
 
-  // Кнопки topbar
-  byId('btn-notify')?.addEventListener('click', async () => {
-    await window.api?.notify?.('Test', 'This is a test notification');
-  });
-
-  byId('btn-docs')?.addEventListener('click', async () => {
-    await window.api?.openExternal?.('https://github.com/sashashostak/KontrNahryuk');
-  });
-
   // Кнопка обробки наказу (Functions)
   byId('btn-process-order')?.addEventListener('click', async () => {
     try {
