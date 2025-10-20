@@ -480,10 +480,25 @@ class UpdateService extends EventEmitter {
     if (newExePath) {
       this.log('📦 Full portable виявлено, оновлення через .bat скрипт')
       
+      // Знайти кореневу папку portable (де лежить .exe)
+      const portableRoot = path.dirname(newExePath)
+      this.log(`  Portable root: ${portableRoot}`)
+      
       const tempExePath = path.join(currentDir, `${path.basename(currentExePath)}.new`)
+      const tempResourcesPath = path.join(currentDir, 'resources.new')
 
       // Скопіювати новий .exe як тимчасовий
       fs.copyFileSync(newExePath, tempExePath)
+      this.log(`  ✓ Скопійовано .exe → ${path.basename(tempExePath)}`)
+      
+      // Скопіювати папку resources
+      const newResourcesPath = path.join(portableRoot, 'resources')
+      if (fs.existsSync(newResourcesPath)) {
+        this.copyDirectory(newResourcesPath, tempResourcesPath)
+        this.log(`  ✓ Скопійовано resources/ → resources.new/`)
+      } else {
+        this.log(`  ⚠️ resources/ не знайдено в portable`)
+      }
 
       // Створити .bat скрипт для заміни після закриття (з підтримкою Unicode шляхів)
       const batScript = `@echo off
@@ -500,7 +515,18 @@ if exist "%~dp0${path.basename(currentExePath)}" (
 
 move /y "%~dp0${path.basename(tempExePath)}" "%~dp0${path.basename(currentExePath)}"
 if errorlevel 1 (
-  echo Помилка переміщення файлу!
+  echo Помилка переміщення .exe!
+  pause
+  exit /b 1
+)
+
+echo Заміна resources папки...
+if exist "%~dp0resources" (
+  rmdir /s /q "%~dp0resources"
+)
+move /y "%~dp0resources.new" "%~dp0resources"
+if errorlevel 1 (
+  echo Помилка переміщення resources!
   pause
   exit /b 1
 )
