@@ -10,10 +10,6 @@ import { createStorage } from './services/storage'
 import { UpdateService } from './services/updateService'
 import { UkrainianNameDeclension } from './services/UkrainianNameDeclension'
 
-console.log('\n\n🌟🌟🌟🌟🌟 MAIN.TS ФАЙЛ ЗАВАНТАЖЕНО - ВЕРСІЯ 17.10.2025-15:00 🌟🌟🌟🌟🌟\n')
-console.log('📁 Поточний файл:', __filename)
-console.log('📂 Директорія:', __dirname)
-
 const isDev = process.env.NODE_ENV !== 'production' && (process.env.VITE_DEV_SERVER_URL !== undefined || process.argv.includes('--dev'))
 
 let storage: any
@@ -363,19 +359,15 @@ function findParagraphsByKeyword(paragraphs: string[], keyword: string): string[
   const normalizedKeyword = keyword.toLowerCase()
   const matched: string[] = []
   
-  console.log(`[findParagraphsByKeyword] Шукаю "${keyword}" (нормалізований: "${normalizedKeyword}") в ${paragraphs.length} абзацах`)
-  
   for (let i = 0; i < paragraphs.length; i++) {
     const paragraph = paragraphs[i]
     const normalizedParagraph = norm(paragraph)
     
     if (normalizedParagraph.includes(normalizedKeyword)) {
       matched.push(paragraph)
-      console.log(`[findParagraphsByKeyword] Знайдено збіг #${matched.length} в абзаці ${i + 1}: "${paragraph.substring(0, 150)}..."`)
     }
   }
   
-  console.log(`[findParagraphsByKeyword] Загалом знайдено ${matched.length} збігів для "${keyword}"`)
   return matched
 }
 
@@ -417,8 +409,6 @@ async function extractFormattedParagraphsFromWord(wordBuf: ArrayBuffer): Promise
     }).filter(p => p.text.length > 0)
     
     const firstLine = paragraphs.length > 0 ? paragraphs[0].text : ''
-    
-    console.log(`[extractFormatted] Загалом абзаців: ${paragraphs.length}`)
     
     return { paragraphs, firstLine }
   } catch (err) {
@@ -1098,21 +1088,8 @@ ipcMain.handle('order:process', async (e, payload) => {
     // 2. Обробка наказу (всі режими)
     const results: Array<{type: string, path: string, stats: any}> = []
     
-    console.log('\n\n🚀🚀🚀 [order:process] ПЕРЕД викликом extractFormattedParagraphsFromWord 🚀🚀🚀')
-    console.log(`[order:process] wordBuf type: ${typeof payload.wordBuf}`)
-    console.log(`[order:process] wordBuf constructor: ${payload.wordBuf?.constructor?.name}`)
-    console.log(`[order:process] wordBuf keys:`, Object.keys(payload.wordBuf || {}).slice(0, 10))
-    console.log(`[order:process] wordBuf byteLength: ${payload.wordBuf?.byteLength}`)
-    console.log(`[order:process] wordBuf buffer: ${payload.wordBuf?.buffer?.byteLength}`)
-    console.log(`[order:process] Is ArrayBuffer: ${payload.wordBuf instanceof ArrayBuffer}`)
-    console.log(`[order:process] Is Buffer: ${Buffer.isBuffer(payload.wordBuf)}`)
-    console.log(`[order:process] Is Uint8Array: ${payload.wordBuf instanceof Uint8Array}`)
-    
     // Витягнути форматовані абзаци з Word (для всіх режимів)
     const { paragraphs: formattedParagraphs, firstLine } = await extractFormattedParagraphsFromWord(payload.wordBuf)
-    
-    console.log('\n\n✅✅✅ [order:process] ПІСЛЯ extractFormattedParagraphsFromWord ✅✅✅')
-    console.log(`[order:process] Отримано paragraphs: ${formattedParagraphs?.length || 0}, firstLine: "${firstLine?.substring(0, 50) || 'undefined'}"`)
     
     // Розбір структури наказу на пункти та підпункти
     const orderStructure = parseOrderStructure(formattedParagraphs)

@@ -1,7 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-console.log('[preload] loaded')
-
 // API interfaces for better type safety
 interface OrderProcessPayload {
   wordBuf: ArrayBuffer

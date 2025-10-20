@@ -420,6 +420,4 @@ window.addEventListener('load', () => {
     settings: settingsManager,
     navigation: navigationService
   };
-
-  console.log('💡 Доступ до менеджерів через window.__managers');
 });

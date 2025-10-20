@@ -22,9 +22,11 @@ export function setupOSIntegration() {
     }
   }
 
+  // Win10+ start menu pins, jumplist, etc
+  
   // Нічна тема за системою (приклад API)
   nativeTheme.on('updated', () => {
-    console.log('[nativeTheme] shouldUseDarkColors=', nativeTheme.shouldUseDarkColors)
+    // Theme changed
   })
 }
 
