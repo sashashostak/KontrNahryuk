@@ -13,7 +13,6 @@ export interface NameDeclension {
   genitive: string;      // Родовий відмінок (Кого? Чого?) - Івана Петренка  
   dative: string;        // Давальний відмінок (Кому? Чому?) - Івану Петренку
   accusative: string;    // Знахідний відмінок (Кого? Що?) - Івана Петренка
-  instrumental: string;  // Орудний відмінок (Ким? Чим?) - Іваном Петренком
   locative: string;      // Місцевий відмінок (На кому? На чому?) - на Івані Петренку
 }
 
@@ -23,67 +22,67 @@ export class UkrainianNameDeclension {
   private static maleFirstNames: Record<string, NameDeclension> = {
     "Олександр": {
       nominative: "Олександр", genitive: "Олександра", dative: "Олександру",
-      accusative: "Олександра", instrumental: "Олександром", locative: "Олександрі"
+      accusative: "Олександра", locative: "Олександрі"
     },
     "Володимир": {
       nominative: "Володимир", genitive: "Володимира", dative: "Володимиру",
-      accusative: "Володимира", instrumental: "Володимиром", locative: "Володимирі"
+      accusative: "Володимира", locative: "Володимирі"
     },
     "Іван": {
       nominative: "Іван", genitive: "Івана", dative: "Івану",
-      accusative: "Івана", instrumental: "Іваном", locative: "Івані"
+      accusative: "Івана", locative: "Івані"
     },
     "Сергій": {
       nominative: "Сергій", genitive: "Сергія", dative: "Сергію",
-      accusative: "Сергія", instrumental: "Сергієм", locative: "Сергії"
+      accusative: "Сергія", locative: "Сергії"
     },
     "Андрій": {
       nominative: "Андрій", genitive: "Андрія", dative: "Андрію",
-      accusative: "Андрія", instrumental: "Андрієм", locative: "Андрії"
+      accusative: "Андрія", locative: "Андрії"
     },
     "Дмитро": {
       nominative: "Дмитро", genitive: "Дмитра", dative: "Дмитру",
-      accusative: "Дмитра", instrumental: "Дмитром", locative: "Дмитрі"
+      accusative: "Дмитра", locative: "Дмитрі"
     },
     "Віктор": {
       nominative: "Віктор", genitive: "Віктора", dative: "Віктору",
-      accusative: "Віктора", instrumental: "Віктором", locative: "Вікторі"
+      accusative: "Віктора", locative: "Вікторі"
     },
     "Михайло": {
       nominative: "Михайло", genitive: "Михайла", dative: "Михайлу",
-      accusative: "Михайла", instrumental: "Михайлом", locative: "Михайлі"
+      accusative: "Михайла", locative: "Михайлі"
     },
     "Олег": {
       nominative: "Олег", genitive: "Олега", dative: "Олегу",
-      accusative: "Олега", instrumental: "Олегом", locative: "Олезі"
+      accusative: "Олега", locative: "Олезі"
     },
     "Юрій": {
       nominative: "Юрій", genitive: "Юрія", dative: "Юрію",
-      accusative: "Юрія", instrumental: "Юрієм", locative: "Юрії"
+      accusative: "Юрія", locative: "Юрії"
     },
     "Василь": {
       nominative: "Василь", genitive: "Василя", dative: "Василю",
-      accusative: "Василя", instrumental: "Василем", locative: "Василі"
+      accusative: "Василя", locative: "Василі"
     },
     "Петро": {
       nominative: "Петро", genitive: "Петра", dative: "Петру",
-      accusative: "Петра", instrumental: "Петром", locative: "Петрі"
+      accusative: "Петра", locative: "Петрі"
     },
     "Артем": {
       nominative: "Артем", genitive: "Артема", dative: "Артему",
-      accusative: "Артема", instrumental: "Артемом", locative: "Артемі"
+      accusative: "Артема", locative: "Артемі"
     },
     "Ігор": {
       nominative: "Ігор", genitive: "Ігоря", dative: "Ігорю",
-      accusative: "Ігоря", instrumental: "Ігорем", locative: "Ігорі"
+      accusative: "Ігоря", locative: "Ігорі"
     },
     "Роман": {
       nominative: "Роман", genitive: "Романа", dative: "Роману",
-      accusative: "Романа", instrumental: "Романом", locative: "Романі"
+      accusative: "Романа", locative: "Романі"
     },
     "Максим": {
       nominative: "Максим", genitive: "Максима", dative: "Максиму",
-      accusative: "Максима", instrumental: "Максимом", locative: "Максимі"
+      accusative: "Максима", locative: "Максимі"
     }
   };
 
@@ -91,43 +90,43 @@ export class UkrainianNameDeclension {
   private static femaleFirstNames: Record<string, NameDeclension> = {
     "Олена": {
       nominative: "Олена", genitive: "Олени", dative: "Олені",
-      accusative: "Олену", instrumental: "Оленою", locative: "Олені"
+      accusative: "Олену", locative: "Олені"
     },
     "Тетяна": {
       nominative: "Тетяна", genitive: "Тетяни", dative: "Тетяні",
-      accusative: "Тетяну", instrumental: "Тетяною", locative: "Тетяні"
+      accusative: "Тетяну", locative: "Тетяні"
     },
     "Наталія": {
       nominative: "Наталія", genitive: "Наталії", dative: "Наталії",
-      accusative: "Наталію", instrumental: "Наталією", locative: "Наталії"
+      accusative: "Наталію", locative: "Наталії"
     },
     "Ірина": {
       nominative: "Ірина", genitive: "Ірини", dative: "Ірині",
-      accusative: "Ірину", instrumental: "Іриною", locative: "Ірині"
+      accusative: "Ірину", locative: "Ірині"
     },
     "Світлана": {
       nominative: "Світлана", genitive: "Світлани", dative: "Світлані",
-      accusative: "Світлану", instrumental: "Світланою", locative: "Світлані"
+      accusative: "Світлану", locative: "Світлані"
     },
     "Людмила": {
       nominative: "Людмила", genitive: "Людмили", dative: "Людмилі",
-      accusative: "Людмилу", instrumental: "Людмилою", locative: "Людмилі"
+      accusative: "Людмилу", locative: "Людмилі"
     },
     "Валентина": {
       nominative: "Валентина", genitive: "Валентини", dative: "Валентині",
-      accusative: "Валентину", instrumental: "Валентиною", locative: "Валентині"
+      accusative: "Валентину", locative: "Валентині"
     },
     "Марія": {
       nominative: "Марія", genitive: "Марії", dative: "Марії",
-      accusative: "Марію", instrumental: "Марією", locative: "Марії"
+      accusative: "Марію", locative: "Марії"
     },
     "Анна": {
       nominative: "Анна", genitive: "Анни", dative: "Анні",
-      accusative: "Анну", instrumental: "Анною", locative: "Анні"
+      accusative: "Анну", locative: "Анні"
     },
     "Катерина": {
       nominative: "Катерина", genitive: "Катерини", dative: "Катерині",
-      accusative: "Катерину", instrumental: "Катериною", locative: "Катерині"
+      accusative: "Катерину", locative: "Катерині"
     }
   };
 
@@ -135,35 +134,35 @@ export class UkrainianNameDeclension {
   private static malePatronymics: Record<string, NameDeclension> = {
     "Олександрович": {
       nominative: "Олександрович", genitive: "Олександровича", dative: "Олександровичу",
-      accusative: "Олександровича", instrumental: "Олександровичем", locative: "Олександровичі"
+      accusative: "Олександровича", locative: "Олександровичі"
     },
     "Володимирович": {
       nominative: "Володимирович", genitive: "Володимировича", dative: "Володимировичу",
-      accusative: "Володимировича", instrumental: "Володимировичем", locative: "Володимировичі"
+      accusative: "Володимировича", locative: "Володимировичі"
     },
     "Іванович": {
       nominative: "Іванович", genitive: "Івановича", dative: "Івановичу",
-      accusative: "Івановича", instrumental: "Івановичем", locative: "Івановичі"
+      accusative: "Івановича", locative: "Івановичі"
     },
     "Сергійович": {
       nominative: "Сергійович", genitive: "Сергійовича", dative: "Сергійовичу",
-      accusative: "Сергійовича", instrumental: "Сергійовичем", locative: "Сергійовичі"
+      accusative: "Сергійовича", locative: "Сергійовичі"
     },
     "Андрійович": {
       nominative: "Андрійович", genitive: "Андрійовича", dative: "Андрійовичу",
-      accusative: "Андрійовича", instrumental: "Андрійовичем", locative: "Андрійовичі"
+      accusative: "Андрійовича", locative: "Андрійовичі"
     },
     "Дмитрович": {
       nominative: "Дмитрович", genitive: "Дмитровича", dative: "Дмитровичу",
-      accusative: "Дмитровича", instrumental: "Дмитровичем", locative: "Дмитровичі"
+      accusative: "Дмитровича", locative: "Дмитровичі"
     },
     "Вікторович": {
       nominative: "Вікторович", genitive: "Вікторовича", dative: "Вікторовичу",
-      accusative: "Вікторовича", instrumental: "Вікторовичем", locative: "Вікторовичі"
+      accusative: "Вікторовича", locative: "Вікторовичі"
     },
     "Михайлович": {
       nominative: "Михайлович", genitive: "Михайловича", dative: "Михайловичу",
-      accusative: "Михайловича", instrumental: "Михайловичем", locative: "Михайловичі"
+      accusative: "Михайловича", locative: "Михайловичі"
     }
   };
 
@@ -171,35 +170,35 @@ export class UkrainianNameDeclension {
   private static femalePatronymics: Record<string, NameDeclension> = {
     "Олександрівна": {
       nominative: "Олександрівна", genitive: "Олександрівни", dative: "Олександрівні",
-      accusative: "Олександрівну", instrumental: "Олександрівною", locative: "Олександрівні"
+      accusative: "Олександрівну", locative: "Олександрівні"
     },
     "Володимирівна": {
       nominative: "Володимирівна", genitive: "Володимирівни", dative: "Володимирівні",
-      accusative: "Володимирівну", instrumental: "Володимирівною", locative: "Володимирівні"
+      accusative: "Володимирівну", locative: "Володимирівні"
     },
     "Іванівна": {
       nominative: "Іванівна", genitive: "Іванівни", dative: "Іванівні",
-      accusative: "Іванівну", instrumental: "Іванівною", locative: "Іванівні"
+      accusative: "Іванівну", locative: "Іванівні"
     },
     "Сергіївна": {
       nominative: "Сергіївна", genitive: "Сергіївни", dative: "Сергіївні",
-      accusative: "Сергіївну", instrumental: "Сергіївною", locative: "Сергіївні"
+      accusative: "Сергіївну", locative: "Сергіївні"
     },
     "Андріївна": {
       nominative: "Андріївна", genitive: "Андріївни", dative: "Андріївні",
-      accusative: "Андріївну", instrumental: "Андріївною", locative: "Андріївні"
+      accusative: "Андріївну", locative: "Андріївні"
     },
     "Дмитрівна": {
       nominative: "Дмитрівна", genitive: "Дмитрівни", dative: "Дмитрівні",
-      accusative: "Дмитрівну", instrumental: "Дмитрівною", locative: "Дмитрівні"
+      accusative: "Дмитрівну", locative: "Дмитрівні"
     },
     "Вікторівна": {
       nominative: "Вікторівна", genitive: "Вікторівни", dative: "Вікторівні",
-      accusative: "Вікторівну", instrumental: "Вікторівною", locative: "Вікторівні"
+      accusative: "Вікторівну", locative: "Вікторівні"
     },
     "Михайлівна": {
       nominative: "Михайлівна", genitive: "Михайлівни", dative: "Михайлівні",
-      accusative: "Михайлівну", instrumental: "Михайлівною", locative: "Михайлівні"
+      accusative: "Михайлівну", locative: "Михайлівні"
     }
   };
 
@@ -330,13 +329,9 @@ export class UkrainianNameDeclension {
           middleNameForms.forEach(middle => {
             allForms.add(`${last} ${first} ${middle}`);
             allForms.add(`${last} ${first}`); // Без по-батькові
-            // Додаємо також варіанти з іншим порядком для більшої гнучкості
-            allForms.add(`${first} ${middle} ${last}`);
-            allForms.add(`${first} ${last}`);
           });
         } else {
           allForms.add(`${last} ${first}`);
-          allForms.add(`${first} ${last}`); // Альтернативний порядок
         }
       });
     });
@@ -503,17 +498,26 @@ export class UkrainianNameDeclension {
 
   /**
    * Знайти збіг імені в тексті (більш строга версія) - потрібно знайти всі частини імені
+   * ВАЖЛИВО: Шукаємо цілі слова, а не частини інших слів
    */
   public static findNameMatch(text: string, targetName: string): boolean {
     const targetForms = this.getAllFormsOfName(targetName);
     const textLower = text.toLowerCase();
     
+    // Розбиваємо текст на слова (розділювачі: пробіли, коми, крапки, дужки тощо)
+    const textWords = textLower.split(/[\s,.:;()«»"""''\/\\—–-]+/).filter(w => w.length > 0);
+    
     // Спробувати знайти точний збіг для кожної форми
     for (const form of targetForms) {
-      const words = form.split(' ').filter(w => w.length >= 2); // Зменшуємо мінімум до 2 символів
+      const formWords = form.split(' ').filter(w => w.length >= 2);
       
-      // Якщо всі слова форми знайдені в тексті - це точний збіг
-      if (words.length > 0 && words.every(word => textLower.includes(word.toLowerCase()))) {
+      // Перевіряємо, чи всі слова форми є серед окремих слів тексту
+      const allWordsFound = formWords.every(formWord => {
+        const formWordLower = formWord.toLowerCase();
+        return textWords.some(textWord => textWord === formWordLower);
+      });
+      
+      if (formWords.length > 0 && allWordsFound) {
         return true;
       }
     }
@@ -523,6 +527,7 @@ export class UkrainianNameDeclension {
 
   /**
    * Діагностична версія для відладки - повертає детальну інформацію про пошук
+   * ВАЖЛИВО: Шукаємо цілі слова, а не частини інших слів
    */
   public static findNameMatchDebug(text: string, targetName: string): {
     found: boolean;
@@ -535,6 +540,8 @@ export class UkrainianNameDeclension {
   } {
     const targetForms = this.getAllFormsOfName(targetName);
     const textLower = text.toLowerCase();
+    const textWords = textLower.split(/[\s,.:;()«»"""''\/\\—–-]+/).filter(w => w.length > 0);
+    
     const matchDetails: Array<{
       form: string;
       matchedWords: string[];
@@ -545,19 +552,21 @@ export class UkrainianNameDeclension {
     let found = false;
     
     for (const form of targetForms) {
-      const words = form.split(' ').filter(w => w.length >= 3);
-      const matchedWords = words.filter(word => textLower.includes(word.toLowerCase()));
-      const matchRatio = words.length > 0 ? matchedWords.length / words.length : 0;
+      const formWords = form.split(' ').filter(w => w.length >= 2);
+      const matchedWords = formWords.filter(formWord => 
+        textWords.some(textWord => textWord === formWord.toLowerCase())
+      );
+      const matchRatio = formWords.length > 0 ? matchedWords.length / formWords.length : 0;
       
       matchDetails.push({
         form,
         matchedWords,
-        allWords: words,
+        allWords: formWords,
         matchRatio
       });
       
-      // Умови для позитивного результату - потрібно знайти ВСІ слова
-      if (words.length > 0 && matchedWords.length === words.length) {
+      // Умови для позитивного результату - потрібно знайти ВСІ слова як окремі слова
+      if (formWords.length > 0 && matchedWords.length === formWords.length) {
         found = true;
       }
     }

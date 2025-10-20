@@ -73,15 +73,15 @@ let uiLoggerService: UILoggerService;
 async function loadSettings(): Promise<void> {
   try {
     // Load checkbox states
-    const isOrder = await window.api?.getSetting?.('isOrder', false);
-    const autoOpen = await window.api?.getSetting?.('autoOpen', true);
+    const autoOpenSearch = await window.api?.getSetting?.('autoOpenSearch', true);
+    const autoOpenOrder = await window.api?.getSetting?.('autoOpenOrder', true);
     
     // Apply saved states
-    const isOrderCheckbox = byId<HTMLInputElement>('t-order');
-    const autoOpenCheckbox = byId<HTMLInputElement>('t-autopen');
+    const autoOpenSearchCheckbox = byId<HTMLInputElement>('t-autopen-search');
+    const autoOpenOrderCheckbox = byId<HTMLInputElement>('t-autopen-order');
     
-    if (isOrderCheckbox) isOrderCheckbox.checked = isOrder;
-    if (autoOpenCheckbox) autoOpenCheckbox.checked = autoOpen;
+    if (autoOpenSearchCheckbox) autoOpenSearchCheckbox.checked = autoOpenSearch;
+    if (autoOpenOrderCheckbox) autoOpenOrderCheckbox.checked = autoOpenOrder;
   } catch (err) {
     console.warn('Failed to load settings:', err);
   }
@@ -92,10 +92,10 @@ async function loadSettings(): Promise<void> {
  * FIXED: Підписка на зміни чекбоксів основних налаштувань
  */
 function setupSettingsAutoSave(): void {
-  const checkboxes = ['t-order', 't-autopen'];
+  const checkboxes = ['t-autopen-search', 't-autopen-order'];
   const settingsMap: Record<string, string> = {
-    't-order': 'isOrder',
-    't-autopen': 'autoOpen'
+    't-autopen-search': 'autoOpenSearch',
+    't-autopen-order': 'autoOpenOrder'
   };
   
   checkboxes.forEach(id => {
@@ -178,20 +178,24 @@ function setupGlobalEventListeners(): void {
     }
   });
 
-  // Кнопка обробки наказу (Functions)
-  byId('btn-process-order')?.addEventListener('click', async () => {
+  // Кнопка обробки пошуку (Секція 1: Пошук тексту)
+  byId('btn-process-search')?.addEventListener('click', async () => {
     try {
-      log('🚀 Початок обробки наказу...');
+      log('🚀 Початок пошуку тексту...');
       
       // 1. Отримання значень з форми
       const sourceType = document.querySelector<HTMLInputElement>('input[name="source-type"]:checked')?.value || 'single-file';
       const resultPath = byId<HTMLInputElement>('result-path')?.value;
-      const isOrder = byId<HTMLInputElement>('t-order')?.checked || false;
-      const autoOpen = byId<HTMLInputElement>('t-autopen')?.checked || false;
-      const excelPath = byId<HTMLInputElement>('excel-path')?.value;
+      const autoOpen = byId<HTMLInputElement>('t-autopen-search')?.checked || false;
       const searchText = byId<HTMLTextAreaElement>('order-text-input')?.value?.trim() || '';
       
       // 2. Перевірка обов'язкових полів
+      if (!searchText) {
+        log('❌ Помилка: Введіть текст для пошуку');
+        await window.api?.notify?.('Помилка', 'Введіть текст для пошуку');
+        return;
+      }
+      
       if (!resultPath) {
         log('❌ Помилка: Оберіть місце збереження результату');
         await window.api?.notify?.('Помилка', 'Оберіть місце збереження результату');
@@ -245,19 +249,18 @@ function setupGlobalEventListeners(): void {
         return;
       }
       
-      // 5. Підготовка payload для processOrder
+      // 5. Підготовка payload для пошуку тексту
       const payload = {
         wordBuf: fileBuffer,
         outputPath: resultPath,
-        excelPath: isOrder && excelPath ? excelPath : undefined,
-        searchText: searchText, // Додаємо текст для пошуку
+        searchText: searchText,
         flags: {
           saveDBPath: false,
-          isOrder: isOrder,
+          isOrder: false,
           tokens: false,
           autoOpen: autoOpen
         },
-        mode: isOrder ? 'order' : (searchText ? 'search' : 'default')
+        mode: 'search'
       };
       
       // Очищуємо логи перед початком обробки
@@ -300,7 +303,114 @@ function setupGlobalEventListeners(): void {
       
     } catch (error) {
       log(`❌ Критична помилка: ${error}`);
-      console.error('Помилка обробки наказу:', error);
+      console.error('Помилка обробки пошуку:', error);
+      await window.api?.notify?.('Помилка', `Помилка: ${error}`);
+    }
+  });
+
+  // Кнопка обробки розпоряджень (Секція 2: Розпорядження)
+  byId('btn-process-order')?.addEventListener('click', async () => {
+    try {
+      log('🚀 Початок обробки розпорядження...');
+      
+      // 1. Отримання значень з форми
+      const wordFileInput = byId<HTMLInputElement>('order-word-file');
+      const wordFile = wordFileInput?.files?.[0];
+      const excelPath = byId<HTMLInputElement>('excel-path')?.value;
+      const excelSheetsCountInput = byId<HTMLInputElement>('excel-sheets-count')?.value;
+      const excelSheetsCount = excelSheetsCountInput ? parseInt(excelSheetsCountInput, 10) : 1;
+      const resultPath = byId<HTMLInputElement>('order-result-path')?.value;
+      const autoOpen = byId<HTMLInputElement>('t-autopen-order')?.checked || false;
+      
+      // 2. Перевірка обов'язкових полів
+      if (!wordFile) {
+        log('❌ Помилка: Оберіть Word наказ');
+        await window.api?.notify?.('Помилка', 'Оберіть Word наказ');
+        return;
+      }
+      
+      if (!excelPath) {
+        log('❌ Помилка: Оберіть Excel файл з БД');
+        await window.api?.notify?.('Помилка', 'Оберіть Excel файл з БД');
+        return;
+      }
+      
+      if (!resultPath) {
+        log('❌ Помилка: Оберіть місце збереження результату');
+        await window.api?.notify?.('Помилка', 'Оберіть місце збереження результату');
+        return;
+      }
+      
+      log(`📂 Обробка файлу: ${wordFile.name}`);
+      
+      // 3. Читання файлу як ArrayBuffer через FileReader
+      log('📖 Читання Word файлу...');
+      const fileBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as ArrayBuffer);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(wordFile);
+      });
+      
+      if (!fileBuffer) {
+        log('❌ Помилка: Не вдалося прочитати файл');
+        await window.api?.notify?.('Помилка', 'Не вдалося прочитати Word файл');
+        return;
+      }
+      
+      // 4. Підготовка payload для розпорядження
+      const payload = {
+        wordBuf: fileBuffer,
+        outputPath: resultPath,
+        excelPath: excelPath,
+        excelSheetsCount: excelSheetsCount,
+        flags: {
+          saveDBPath: false,
+          isOrder: true,
+          tokens: false,
+          autoOpen: autoOpen
+        },
+        mode: 'order'
+      };
+      
+      // Очищуємо логи перед початком обробки
+      uiLoggerService.clear();
+      
+      log('⚙️ Обробка розпорядження...');
+      
+      // 5. Виклик API
+      const result = await window.api?.processOrder?.(payload);
+      
+      // 6. Обробка результату
+      if (result?.ok) {
+        const stats = result.stats as { tokens?: number; paragraphs?: number; matched?: number; totalDocuments?: number } | undefined;
+        log(`✅ Розпорядження успішно оброблено!`);
+        
+        // Показати статистику
+        if (stats?.totalDocuments) {
+          log(`📊 Створено документів: ${stats.totalDocuments}`);
+          log(`📊 Знайдено збігів: ${stats?.matched || 0}`);
+        } else {
+          log(`📊 Статистика: параграфів - ${stats?.paragraphs || 0}, знайдено - ${stats?.matched || 0}`);
+        }
+        
+        if (result.out) {
+          log(`💾 Результат збережено: ${result.out}`);
+        }
+        
+        // Повідомлення про успіх
+        const matchCount = stats?.matched || 0;
+        await window.api?.notify?.('Успіх', `Розпорядження оброблено! Знайдено збігів: ${matchCount}`);
+        
+      } else {
+        const errorMsg = result?.error || 'Невідома помилка';
+        log(`❌ Помилка обробки: ${errorMsg}`);
+        await window.api?.notify?.('Помилка', errorMsg);
+      }
+      
+    } catch (error) {
+      log(`❌ Критична помилка: ${error}`);
+      console.error('Помилка обробки розпорядження:', error);
       await window.api?.notify?.('Помилка', `Помилка: ${error}`);
     }
   });
@@ -338,6 +448,46 @@ function setupGlobalEventListeners(): void {
   // Кнопка перевірки оновлень
   byId('btn-check-updates')?.addEventListener('click', async () => {
     await updateManager.checkForUpdates();
+  });
+
+  // Кнопка вибору Excel для розпоряджень
+  byId('choose-excel')?.addEventListener('click', async () => {
+    try {
+      const filePath = await window.api?.selectExcelFile?.();
+      if (filePath) {
+        const excelPathInput = byId<HTMLInputElement>('excel-path');
+        const excelPathDisplay = byId<HTMLElement>('excel-path-display');
+        if (excelPathInput) {
+          excelPathInput.value = filePath;
+        }
+        if (excelPathDisplay) {
+          excelPathDisplay.textContent = filePath;
+        }
+        log(`📊 Обрано Excel БД: ${filePath}`);
+      }
+    } catch (error) {
+      log(`❌ Помилка вибору Excel: ${error}`);
+    }
+  });
+
+  // Кнопка вибору місця збереження для розпоряджень
+  byId('choose-order-result')?.addEventListener('click', async () => {
+    try {
+      const filePath = await window.api?.chooseSavePath?.('Розпорядження_результат.docx');
+      if (filePath) {
+        const resultPathInput = byId<HTMLInputElement>('order-result-path');
+        const resultPathDisplay = byId<HTMLElement>('order-result-path-display');
+        if (resultPathInput) {
+          resultPathInput.value = filePath;
+        }
+        if (resultPathDisplay) {
+          resultPathDisplay.textContent = filePath;
+        }
+        log(`💾 Обрано місце збереження: ${filePath}`);
+      }
+    } catch (error) {
+      log(`❌ Помилка вибору місця збереження: ${error}`);
+    }
   });
 
   log('🔗 Глобальні event listeners налаштовано');

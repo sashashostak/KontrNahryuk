@@ -23,41 +23,42 @@
         
         <!-- License system removed - app is now free and open -->
         <section data-route="/functions" class="route">
+          <!-- Секція 1: Пошук тексту в наказі -->
           <div class="card">
-            <h3>Обробка наказів</h3>
+            <div class="section-header">
+              <h2>Пошук тексту в наказі</h2>
+            </div>
 
             <!-- Поле для введення тексту наказу -->
             <div class="form">
               <label class="field">
-                <span class="label">Текст для пошуку в наказі</span>
-                <textarea 
+                <span class="label">Текст для пошуку</span>
+                <input 
+                  type="text"
                   class="input" 
                   id="order-text-input" 
                   placeholder="Введіть текст для пошуку в наказі..."
-                  rows="3"
-                  style="resize: vertical; min-height: 80px;"
-                ></textarea>
-                <small class="hint">Введіть текст, який потрібно знайти в документах</small>
+                />
               </label>
             </div>
 
             <div class="divider"></div>
 
-            <div class="form grid cols-2">
+            <div class="form">
               <label class="field">
                 <span class="label">Джерело для пошуку</span>
                 <div class="source-selector">
                   <div class="radio-group">
                     <label class="radio-option">
-                      <input type="radio" name="source-type" value="single-file" id="source-single" checked>
+                      <input type="radio" name="source-type" value="single-file" id="source-single" class="nose-radio" checked>
                       <span class="radio-label">Один файл</span>
                     </label>
                     <label class="radio-option">
-                      <input type="radio" name="source-type" value="multiple-files" id="source-multiple">
+                      <input type="radio" name="source-type" value="multiple-files" id="source-multiple" class="nose-radio">
                       <span class="radio-label">Декілька файлів</span>
                     </label>
                     <label class="radio-option">
-                      <input type="radio" name="source-type" value="folder" id="source-folder">
+                      <input type="radio" name="source-type" value="folder" id="source-folder" class="nose-radio">
                       <span class="radio-label">Вся папка</span>
                     </label>
                   </div>
@@ -66,7 +67,7 @@
                   <div class="source-input" id="single-file-input">
                     <label class="file-picker">
                       <input type="file" class="file-input" id="word-file" accept=".doc,.docx" aria-label="Вибрати документ Word">
-                      <span class="file-btn">Вибрати файл</span>
+                      <span class="file-btn">Обрати файл...</span>
                       <span class="file-name">Файл не вибрано</span>
                     </label>
                   </div>
@@ -75,7 +76,7 @@
                   <div class="source-input" id="multiple-files-input" style="display: none;">
                     <label class="file-picker">
                       <input type="file" class="file-input" id="word-files" accept=".doc,.docx" multiple aria-label="Вибрати документи Word">
-                      <span class="file-btn">Вибрати файли</span>
+                      <span class="file-btn">Обрати файли...</span>
                       <span class="file-name">Файли не вибрано</span>
                     </label>
                   </div>
@@ -92,43 +93,78 @@
 
               <label class="field">
                 <span class="label">Місце збереження результату</span>
-                <div class="row">
-                  <input class="input" id="result-path" placeholder="Шлях до вихідного файлу…" readonly />
-                  <button class="btn" id="choose-result">Обрати місце…</button>
+                <div class="file-picker">
+                  <span class="file-btn" id="choose-result">Обрати місце...</span>
+                  <span class="file-name" id="result-path-display">Шлях не вибрано</span>
+                  <input type="hidden" id="result-path" />
                 </div>
-                <small class="hint">Кнопка відкриє системний провідник</small>
               </label>
-            </div>
 
-            <!-- Умовне поле Excel для Розпорядження -->
-            <div class="section excel-section" id="excel-section" style="display: none;">
-              <label class="field">
-                <span class="label">Excel файл зі списком імен</span>
-                <div class="row">
-                  <input class="input" id="excel-path" placeholder="Файл Excel з іменами…" readonly />
-                  <button class="btn" id="choose-excel">Обрати файл…</button>
-                </div>
-                <small class="hint">Потрібен Excel файл з іменами для пошуку в розпорядженнях</small>
-              </label>
-              <div class="divider"></div>
-            </div>
-
-            <div class="grid cols-2 toggles">
               <label class="toggle">
-                <input type="checkbox" id="t-order" class="nose" />
-                <span>Розпорядження</span>
-              </label>
-              <label class="toggle">
-                <input type="checkbox" id="t-autopen" class="nose" checked />
+                <input type="checkbox" id="t-autopen-search" class="nose" checked />
                 <span>Автовідкриття</span>
               </label>
             </div>
 
             <div class="divider"></div>
             <div class="actions-bottom">
-              <button class="btn primary" id="btn-process-order">Обробити наказ</button>
+              <button class="btn primary" id="btn-process-search">Обробити</button>
+            </div>
+          </div>
+
+          <!-- Секція 2: Розпорядження -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="section-header">
+              <h2>Розпорядження</h2>
             </div>
 
+            <div class="form">
+              <label class="field">
+                <span class="label">Word наказ</span>
+                <label class="file-picker">
+                  <input type="file" class="file-input" id="order-word-file" accept=".doc,.docx" aria-label="Вибрати документ Word">
+                  <span class="file-btn">Обрати файл...</span>
+                  <span class="file-name">Файл не вибрано</span>
+                </label>
+              </label>
+
+              <label class="field">
+                <span class="label">Excel БД зі списком імен</span>
+                <div class="file-picker">
+                  <span class="file-btn" id="choose-excel">Обрати файл...</span>
+                  <span class="file-name" id="excel-path-display">Файл не вибрано</span>
+                  <input type="hidden" id="excel-path" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span class="label">Кількість листів для обробки</span>
+                <input type="number" id="excel-sheets-count" class="input" value="1" min="1" max="100" placeholder="Введіть кількість перших листів (наприклад: 5)">
+              </label>
+
+              <label class="field">
+                <span class="label">Місце збереження результату</span>
+                <div class="file-picker">
+                  <span class="file-btn" id="choose-order-result">Обрати місце...</span>
+                  <span class="file-name" id="order-result-path-display">Шлях не вибрано</span>
+                  <input type="hidden" id="order-result-path" />
+                </div>
+              </label>
+
+              <label class="toggle">
+                <input type="checkbox" id="t-autopen-order" class="nose" checked />
+                <span>Автовідкриття</span>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+            <div class="actions-bottom">
+              <button class="btn primary" id="btn-process-order">Обробити</button>
+            </div>
+          </div>
+
+          <!-- Спільний лог для обох секцій -->
+          <div class="card" style="margin-top: 12px;">
             <div class="log-container">
               <div class="log-header">
                 <h4>Лог виконання</h4>
@@ -183,7 +219,7 @@
                   
                   <div class="field checkbox-field">
                     <label>
-                      <input type="checkbox" id="excel-remember-destination" checked>
+                      <input type="checkbox" id="excel-remember-destination" class="nose" checked>
                       <span>Запам'ятати файл призначення для наступних сесій</span>
                     </label>
                   </div>
@@ -196,21 +232,21 @@
                 <div class="form">
                   <div class="field checkbox-field">
                     <label>
-                      <input type="checkbox" id="excel-slice-check" checked>
+                      <input type="checkbox" id="excel-slice-check" class="nose" checked>
                       <span>Slice_Check</span>
                     </label>
                   </div>
                   
                   <div class="field checkbox-field">
                     <label>
-                      <input type="checkbox" id="excel-mismatches" checked>
+                      <input type="checkbox" id="excel-mismatches" class="nose" checked>
                       <span>Mismatches</span>
                     </label>
                   </div>
                   
                   <div class="field checkbox-field">
                     <label>
-                      <input type="checkbox" id="excel-sanitizer" checked>
+                      <input type="checkbox" id="excel-sanitizer" class="nose" checked>
                       <span>Sanitizer</span>
                     </label>
                   </div>

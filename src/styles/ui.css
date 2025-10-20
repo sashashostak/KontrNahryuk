@@ -44,7 +44,51 @@ button{ cursor:pointer; }
 
 .content{ grid-area: content; padding:20px; overflow:auto; }
 
-.card{ background: var(--panel); border:1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding:16px; box-shadow: var(--shadow); }
+.card{ background: var(--panel); border:1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding:20px; box-shadow: var(--shadow); }
+
+/* Шапка секції */
+.section-header {
+  background: linear-gradient(135deg, rgba(49, 89, 166, 0.15), rgba(44, 130, 201, 0.1));
+  border-bottom: 2px solid rgba(49, 89, 166, 0.3);
+  margin: -20px -20px 20px -20px;
+  padding: 16px 20px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+/* Заголовки в card */
+.card > h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.card > h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Form контейнер */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form.grid {
+  display: grid;
+}
 
 /* Під-картка для мапінгу колонок */
 .subcard{ 
@@ -69,10 +113,43 @@ button{ cursor:pointer; }
 }
 
 .input, .btn, textarea{
-  padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background: var(--panel-2); color:var(--text);
+  padding:11px 14px; 
+  border-radius:12px; 
+  border:1px solid rgba(255,255,255,0.1); 
+  background: var(--panel-2); 
+  color:var(--text);
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
-.btn{ background: linear-gradient(135deg, #2a3346, #2c364b); border-color: rgba(255,255,255,0.12); }
-.btn.primary{ background: linear-gradient(135deg, #3159a6, #2c82c9); border:none; }
+
+.input:focus, textarea:focus {
+  outline: none;
+  border-color: rgba(77, 163, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(77, 163, 255, 0.1);
+}
+
+.btn{ 
+  background: linear-gradient(135deg, #2a3346, #2c364b); 
+  border-color: rgba(255,255,255,0.12);
+  font-weight: 500;
+}
+
+.btn:hover {
+  background: linear-gradient(135deg, #303a50, #344158);
+  border-color: rgba(255,255,255,0.16);
+}
+
+.btn.primary{ 
+  background: linear-gradient(135deg, #3159a6, #2c82c9); 
+  border:none;
+  font-weight: 600;
+}
+
+.btn.primary:hover {
+  background: linear-gradient(135deg, #3a66b8, #3790d8);
+  box-shadow: 0 4px 12px rgba(44, 130, 201, 0.3);
+}
+
 .input.file{ padding:8px; }
 textarea.input{ resize: vertical; }
 
@@ -96,7 +173,15 @@ textarea.input{ resize: vertical; }
 .row{ display:flex; gap:8px; align-items:center; }
 .row .input{ flex: 1 1 auto; }
 
-.divider{ height:1px; background: rgba(255,255,255,0.08); margin:16px 0; }
+.divider{ height:1px; background: rgba(255,255,255,0.08); margin:20px 0; }
+
+/* Контейнер для toggles */
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
 
 .toggles .toggle{ 
   display:flex; 
@@ -114,12 +199,18 @@ textarea.input{ resize: vertical; }
   background: rgba(255,255,255,0.045);
 }
 
-/* Стилізація чекбоксів */
-.toggles .toggle input[type="checkbox"]{
+/* Стилізація чекбоксів (загальні стилі) */
+input[type="checkbox"]{
   width: 18px; 
   height: 18px;
   accent-color: var(--accent);
   transition: filter .15s ease, transform .06s ease, box-shadow .15s ease;
+  cursor: pointer;
+}
+
+.toggles .toggle input[type="checkbox"]{
+  width: 18px; 
+  height: 18px;
 }
 
 /* Hover/active ефекти */
@@ -150,8 +241,8 @@ textarea.input{ resize: vertical; }
   accent-color: var(--accent-pressed);
 }
 
-/* КАСТОМНИЙ чекбокс з "п'ятачком" 🐽 */
-.toggles .toggle input[type="checkbox"].nose{
+/* КАСТОМНИЙ чекбокс з "п'ятачком" 🐽 - ЗАГАЛЬНІ СТИЛІ */
+input[type="checkbox"].nose{
   appearance: none;
   width: 20px; height: 20px;
   border-radius: 6px;
@@ -160,18 +251,19 @@ textarea.input{ resize: vertical; }
   display: inline-grid; place-items: center;
   transition: background .18s ease, border-color .18s ease, transform .06s ease, filter .15s ease;
   margin: 0;
+  cursor: pointer;
 }
 
-.toggles .toggle:hover input[type="checkbox"].nose{ 
+input[type="checkbox"].nose:hover{ 
   filter: brightness(1.05); 
 }
 
-.toggles .toggle input[type="checkbox"].nose:active{ 
+input[type="checkbox"].nose:active{ 
   transform: translateY(1px); 
 }
 
 /* SVG-іконка "п'ятачка" */
-.toggles .toggle input[type="checkbox"].nose::after{
+input[type="checkbox"].nose::after{
   content: "";
   width: 16px; height: 16px;
   opacity: 0; transform: scale(.9);
@@ -183,23 +275,78 @@ textarea.input{ resize: vertical; }
 }
 
 /* Активний стан */
-.toggles .toggle input[type="checkbox"].nose:checked{
+input[type="checkbox"].nose:checked{
   background: radial-gradient(transparent 60%, rgba(255,255,255,0.08) 62%), var(--panel-2);
   border-color: var(--nose-ring);
 }
 
-.toggles .toggle input[type="checkbox"].nose:checked::after{
+input[type="checkbox"].nose:checked::after{
   opacity: 1; transform: scale(1);
 }
 
-/* Фокус з клавіатури */
-.toggles .toggle input[type="checkbox"].nose:focus-visible{
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--nose-focus) 55%, transparent);
+input[type="checkbox"].nose:focus-visible{
+  outline: 2px solid var(--nose-focus);
+  outline-offset: 2px;
 }
 
-.actions-bottom{ display:flex; justify-content:flex-end; }
-.actions-bottom .btn{ min-width: 220px; }
+/* КАСТОМНИЙ radio з "п'ятачком" 🐽 */
+input[type="radio"].nose-radio{
+  appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: var(--panel-2);
+  display: inline-grid; place-items: center;
+  transition: background .18s ease, border-color .18s ease, transform .06s ease, filter .15s ease;
+  margin: 0;
+  cursor: pointer;
+}
+
+input[type="radio"].nose-radio:hover{ 
+  filter: brightness(1.05); 
+}
+
+input[type="radio"].nose-radio:active{ 
+  transform: translateY(1px); 
+}
+
+/* SVG-іконка "п'ятачка" для radio */
+input[type="radio"].nose-radio::after{
+  content: "";
+  width: 16px; height: 16px;
+  opacity: 0; transform: scale(.9);
+  transition: opacity .18s ease, transform .18s ease;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10' fill='%23ffc4c4'/><circle cx='9' cy='12' r='2.3' fill='%237a2f2f'/><circle cx='15' cy='12' r='2.3' fill='%237a2f2f'/></svg>");
+}
+
+/* Активний стан для radio */
+input[type="radio"].nose-radio:checked{
+  background: radial-gradient(transparent 60%, rgba(255,255,255,0.08) 62%), var(--panel-2);
+  border-color: var(--nose-ring);
+}
+
+input[type="radio"].nose-radio:checked::after{
+  opacity: 1; transform: scale(1);
+}
+
+input[type="radio"].nose-radio:focus-visible{
+  outline: 2px solid var(--nose-focus);
+  outline-offset: 2px;
+}
+
+.actions-bottom{ 
+  display:flex; 
+  justify-content:flex-end;
+  margin-top: 4px;
+}
+.actions-bottom .btn{ 
+  min-width: 220px;
+  padding: 12px 24px;
+  font-weight: 500;
+}
 
 /* LOG */
 .card.subtle{ background: rgba(21,25,34,0.6); border: 1px dashed rgba(255,255,255,0.12); margin-top: 16px; }
@@ -255,16 +402,18 @@ textarea.input{ resize: vertical; }
 .file-name {
   flex: 1; 
   padding: 0 10px; 
-  opacity: .85; 
+  opacity: .7;
   white-space: nowrap; 
   overflow: hidden; 
   text-overflow: ellipsis;
   color: var(--text);
+  font-style: normal;
+  font-size: 14px;
 }
 
 .file-name.empty { 
-  opacity: .55; 
-  font-style: italic; 
+  opacity: .6;
+  font-style: normal;
 }
 
 /* SCROLLBAR STYLES */
@@ -813,7 +962,7 @@ textarea.input{ resize: vertical; }
 }
 
 .log-container {
-  margin-top: 16px;
+  margin-top: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.4);
@@ -825,24 +974,24 @@ textarea.input{ resize: vertical; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .log-header h4 {
   margin: 0;
-  font-size: 0.9em;
+  font-size: 0.85em;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .log-container h4 {
   margin: 0;
-  padding: 12px 16px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.9em;
+  font-size: 0.85em;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -850,9 +999,9 @@ textarea.input{ resize: vertical; }
 .log-body {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.4;
   margin: 0;
-  padding: 16px;
+  padding: 6px 12px;
   min-height: 120px;
   max-height: 320px;
   overflow-y: auto;
@@ -1628,11 +1777,7 @@ textarea.input::placeholder {
   font-size: 14px;
 }
 
-.checkbox-field input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
+/* checkbox-field використовує загальні стилі для input[type="checkbox"].nose */
 
 .radio-field {
   margin-bottom: 12px;

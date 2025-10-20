@@ -49,10 +49,10 @@ export class SectionManager {
       this.toggleExcelSection();
     });
 
-    // Обробник для кнопки вибору Excel файлу
-    byId(DOM_IDS.CHOOSE_EXCEL)?.addEventListener(EVENT_TYPES.CLICK, () => {
-      this.selectExcelFile();
-    });
+    // ВИДАЛЕНО: Обробник для кнопки вибору Excel файлу перенесено в main.ts
+    // byId(DOM_IDS.CHOOSE_EXCEL)?.addEventListener(EVENT_TYPES.CLICK, () => {
+    //   this.selectExcelFile();
+    // });
 
     // Обробник для кнопки вибору місця збереження результату
     byId(DOM_IDS.CHOOSE_RESULT)?.addEventListener(EVENT_TYPES.CLICK, () => {
@@ -70,26 +70,6 @@ export class SectionManager {
   }
 
   /**
-   * Викликає діалог вибору Excel файлу через IPC
-   * @async
-   */
-  private async selectExcelFile(): Promise<void> {
-    try {
-      const filePath = await window.api?.selectExcelFile?.();
-      if (filePath) {
-        const excelInput = byId<HTMLInputElement>(DOM_IDS.EXCEL_PATH);
-        if (excelInput) {
-          excelInput.value = filePath;
-        }
-        log(`📊 Обрано Excel файл: ${filePath}`);
-      }
-    } catch (error) {
-      console.error('Помилка вибору Excel файлу:', error);
-      log(`❌ Помилка вибору Excel файлу: ${error}`);
-    }
-  }
-
-  /**
    * Викликає діалог вибору місця збереження результату через IPC
    * @async
    */
@@ -98,8 +78,12 @@ export class SectionManager {
       const filePath = await window.api?.chooseSavePath?.('result.docx');
       if (filePath) {
         const resultInput = byId<HTMLInputElement>('result-path');
+        const resultDisplay = byId<HTMLElement>('result-path-display');
         if (resultInput) {
           resultInput.value = filePath;
+        }
+        if (resultDisplay) {
+          resultDisplay.textContent = filePath;
         }
         log(`💾 Обрано місце збереження: ${filePath}`);
       }

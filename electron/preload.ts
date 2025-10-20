@@ -5,6 +5,7 @@ interface OrderProcessPayload {
   wordBuf: ArrayBuffer
   outputPath: string
   excelPath?: string
+  excelSheetsCount?: number
   searchText?: string
   flags: {
     saveDBPath: boolean

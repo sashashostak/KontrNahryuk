@@ -688,36 +688,167 @@ function parseOrderStructure(paragraphs: Array<{ text: string, html: string }>):
 }
 
 // Функція для читання Excel файлу та отримання ПІБ з колонки D
-async function readExcelColumnD(filePath: string): Promise<string[]> {
+// Інтерфейс для зберігання ПІБ з інформацією про джерело
+interface ExcelName {
+  name: string;      // ПІБ
+  sheetName: string; // Назва листа Excel
+  sheetIndex: number; // Номер листа (для сортування)
+}
+
+async function readExcelColumnD(filePath: string, sheetsCount: number = 1): Promise<ExcelName[]> {
   try {
     const data = await fs.readFile(filePath)
     const workbook = xlsx.read(data, { type: 'buffer' })
-    const sheetName = workbook.SheetNames[0] // Перший аркуш
-    const sheet = workbook.Sheets[sheetName]
     
-    const names: string[] = []
-    let row = 1 // Починаємо з першого рядка
+    const names: ExcelName[] = []
+    const sheetsToProcess = Math.min(sheetsCount, workbook.SheetNames.length)
     
-    while (true) {
-      const cellAddress = `D${row}` // Колонка D
-      const cell = sheet[cellAddress]
+    console.log(`[Excel] Обробляємо перші ${sheetsToProcess} листів з ${workbook.SheetNames.length} доступних`)
+    
+    // Обробляємо вказану кількість листів
+    for (let sheetIndex = 0; sheetIndex < sheetsToProcess; sheetIndex++) {
+      const sheetName = workbook.SheetNames[sheetIndex]
+      const sheet = workbook.Sheets[sheetName]
       
-      if (!cell || !cell.v) break // Якщо комірка пуста, зупиняємося
+      console.log(`[Excel] Читання листа #${sheetIndex + 1}: "${sheetName}"`)
       
-      const value = String(cell.v).trim()
-      if (value) {
-        names.push(value)
+      let row = 2 // Починаємо з ДРУГОГО рядка (перший - заголовок "ПІБ")
+      let sheetNamesCount = 0
+      
+      while (true) {
+        const cellAddress = `D${row}` // Колонка D
+        const cell = sheet[cellAddress]
+        
+        if (!cell || !cell.v) break // Якщо комірка пуста, зупиняємося
+        
+        const value = String(cell.v).trim()
+        // Пропускаємо заголовки (ПІБ, прізвище тощо)
+        if (value && !value.match(/^(ПІБ|Прізвище|Імя|По-батькові)$/i)) {
+          names.push({
+            name: value,
+            sheetName: sheetName,
+            sheetIndex: sheetIndex
+          })
+          sheetNamesCount++
+        }
+        
+        row++
       }
       
-      row++
+      console.log(`[Excel] Лист "${sheetName}": знайдено ${sheetNamesCount} ПІБ`)
     }
     
-    console.log(`[Excel] Зчитано ${names.length} ПІБ з колонки D:`, names.slice(0, 3)) // Показуємо перші 3
+    console.log(`[Excel] Всього зчитано ${names.length} ПІБ з колонки D`)
+    if (names.length > 0) {
+      console.log(`[Excel] Перші 3 ПІБ:`, names.slice(0, 3).map(n => `${n.name} (${n.sheetName})`))
+    }
+    
     return names
   } catch (error) {
     console.error('[Excel] Помилка читання файлу:', error)
     return []
   }
+}
+
+// Функція для пошуку розпоряджень в структурі (AND логіка: ПІБ + "розпорядженні")
+function findOrderInStructure(structure: OrderItem[], excelNames: ExcelName[]): OrderItem[] {
+  const results: OrderItem[] = []
+  const addedIndices = new Set<number>()
+  
+  const orderKeywordRegex = /розпоряд(женн[іїя]|ження)/i
+  
+  // Статистика
+  let foundParagraphs = 0
+  let foundPoints = 0
+  let foundSubpoints = 0
+  let foundDashPoints = 0
+  
+  function addWithHierarchy(item: OrderItem): void {
+    const hierarchyChain: OrderItem[] = []
+    
+    let current: OrderItem | undefined = item
+    while (current) {
+      hierarchyChain.unshift(current)
+      current = current.parent
+    }
+    
+    console.log(`[findOrderInStructure] Додавання ієрархії для "${item.text.substring(0, 40)}...":`)
+    for (const h of hierarchyChain) {
+      console.log(`[findOrderInStructure]   ${h.type}${h.number ? ` ${h.number}` : ''}: "${h.text.substring(0, 40)}..."`)
+    }
+    
+    for (const hierarchyItem of hierarchyChain) {
+      if (!addedIndices.has(hierarchyItem.index)) {
+        results.push(hierarchyItem)
+        addedIndices.add(hierarchyItem.index)
+        
+        if (hierarchyItem.type === 'dash-point') {
+          foundDashPoints++
+          console.log(`[findOrderInStructure]   ✅ Додано ШтрихПункт: "${hierarchyItem.text.substring(0, 40)}..."`)
+        } else if (hierarchyItem.type === 'point') {
+          foundPoints++
+        } else if (hierarchyItem.type === 'subpoint') {
+          foundSubpoints++
+        } else if (hierarchyItem.type === 'paragraph') {
+          foundParagraphs++
+        }
+      }
+    }
+  }
+  
+  function searchRecursive(items: OrderItem[]): void {
+    for (const item of items) {
+      // Перевірка 1: Чи є слово "розпорядженні"
+      const containsOrderKeyword = orderKeywordRegex.test(item.text)
+      
+      if (containsOrderKeyword) {
+        // Перевірка 2: Чи є ПІБ з Excel
+        let matchedNames: Array<{name: string, sheet: string}> = []
+        
+        for (const excelName of excelNames) {
+          if (!excelName.name || excelName.name.trim() === '') continue
+          
+          if (UkrainianNameDeclension.findNameMatch(item.text, excelName.name.trim())) {
+            matchedNames.push({
+              name: excelName.name.trim(),
+              sheet: excelName.sheetName
+            })
+          }
+        }
+        
+        // AND логіка: додаємо тільки якщо Є І "розпорядженні" І ПІБ
+        if (matchedNames.length > 0) {
+          console.log(`[findOrderInStructure] 🎯 Знайдено збіг в ${item.type}${item.number ? ` ${item.number}` : ''}`)
+          matchedNames.forEach(match => {
+            console.log(`[findOrderInStructure]    ПІБ: "${match.name}" з листа Excel "${match.sheet}"`)
+          })
+          console.log(`[findOrderInStructure]    Текст: "${item.text.substring(0, 100)}..."`)
+          
+          if (item.parent) {
+            console.log(`[findOrderInStructure]    Батько: ${item.parent.type}${item.parent.number ? ` ${item.parent.number}` : ''}`)
+          }
+          
+          addWithHierarchy(item)
+        }
+      }
+      
+      // Рекурсивний пошук в дочірніх елементах
+      if (item.children.length > 0) {
+        searchRecursive(item.children)
+      }
+    }
+  }
+  
+  searchRecursive(structure)
+  
+  console.log(`[findOrderInStructure] === СТАТИСТИКА ПОШУКУ ===`)
+  console.log(`[findOrderInStructure] Всього елементів в результаті: ${results.length}`)
+  console.log(`[findOrderInStructure]   - Пунктів: ${foundPoints}`)
+  console.log(`[findOrderInStructure]   - Підпунктів: ${foundSubpoints}`)
+  console.log(`[findOrderInStructure]   - ШтрихПунктів: ${foundDashPoints} ⭐`)
+  console.log(`[findOrderInStructure]   - Абзаців: ${foundParagraphs}`)
+  
+  return results.sort((a, b) => a.index - b.index)
 }
 
 // Функція для пошуку в структурі з контекстом
@@ -922,8 +1053,8 @@ async function createStructuredResultDocument(
     }
     
     // Визначити форматування залежно від типу
-    // ШтрихПункт = тільки підкреслений (БЕЗ жирного)
-    const isBold = item.type === 'point' || item.type === 'subpoint'
+    // ШтрихПункт = жирний та підкреслений
+    const isBold = item.type === 'point' || item.type === 'subpoint' || item.type === 'dash-point'
     
     // === ПЕРЕВІРКА: чи це фраза "нижчепойменованих військовослужбовців" ===
     const isPhraseStart = item.text.trim().toLowerCase().startsWith('нижчепойменованих військовослужбовців')
@@ -1145,42 +1276,35 @@ ipcMain.handle('order:process', async (e, payload) => {
       // Розпорядження режим - пошук з Excel файлом і правильною логікою
       if (payload.flags.isOrder) {
         try {
-          console.log('[order:process] Режим Розпорядження: читання Excel файлу та пошук з AND логікою...')
+          console.log('[order:process] Режим Розпорядження: читання Excel файлу та пошук зі структурою...')
           
           // Читання Excel файлу для отримання ПІБ
-          let excelNames: string[] = []
+          let excelNames: ExcelName[] = []
           if (payload.excelPath) {
+            const sheetsCount = payload.excelSheetsCount || 1
             console.log(`[order:process] Читання Excel файлу: ${payload.excelPath}`)
-            excelNames = await readExcelColumnD(payload.excelPath)
+            console.log(`[order:process] Кількість листів для обробки: ${sheetsCount}`)
+            excelNames = await readExcelColumnD(payload.excelPath, sheetsCount)
             console.log(`[order:process] Знайдено ${excelNames.length} ПІБ в Excel колонці D`)
           } else {
-            console.log('[order:process] ⚠️ Excel файл не вибрано - використовуємо тільки пошук "розпорядженні"')
+            console.log('[order:process] ⚠️ Excel файл не вибрано - режим неможливий без Excel')
+            return { ok: false, error: 'Для режиму Розпорядження потрібен Excel файл з ПІБ' }
           }
           
-          // Використання правильної логіки з UkrainianNameDeclension
-          const wordText = paragraphs.join('\n\n')
-          const orderResults = UkrainianNameDeclension.findOrderParagraphs(wordText, excelNames)
+          // НОВА ЛОГІКА: Пошук в структурі наказу (як в "Пошук тексту")
+          console.log(`[order:process] Пошук в структурі наказу з AND логікою (ПІБ + "розпорядженні")...`)
+          const orderMatchedItems = findOrderInStructure(orderStructure, excelNames)
           
-          console.log(`[order:process] Знайдено абзаців з правильною логікою: ${orderResults.length}`)
+          console.log(`[order:process] Знайдено елементів структури: ${orderMatchedItems.length}`)
           
           // Показати перші кілька знайдених збігів
-          if (orderResults.length > 0) {
-            console.log('[order:process] Перші 3 знайдені абзаци з AND логікою:')
-            for (let i = 0; i < Math.min(3, orderResults.length); i++) {
-              const result = orderResults[i]
-              console.log(`[order:process] Збіг #${i+1}: ПІБ: [${result.matchedNames.join(', ')}] - "${result.paragraph.substring(0, 100)}..."`)
+          if (orderMatchedItems.length > 0) {
+            console.log('[order:process] Перші 3 знайдені елементи:')
+            for (let i = 0; i < Math.min(3, orderMatchedItems.length); i++) {
+              const item = orderMatchedItems[i]
+              console.log(`[order:process] Збіг #${i+1} [${item.type}${item.number ? ` ${item.number}` : ''}]: "${item.text.substring(0, 100)}..."`)
             }
           }
-          
-          // Конвертуємо результати в формат OrderItem для сумісності
-          const orderMatchedItems: OrderItem[] = orderResults.map((result, index) => ({
-            type: 'paragraph' as const,
-            text: result.paragraph,
-            html: result.paragraph,
-            index: result.startPosition,
-            children: [],
-            matchedNames: result.matchedNames
-          }))
           
           // Додати результат розпорядження до списку
           results.push({
@@ -1194,7 +1318,7 @@ ipcMain.handle('order:process', async (e, payload) => {
             }
           })
           
-          // Створити документ розпорядження з першою строкою та структурою
+          // Створити документ розпорядження з структурою
           const orderPath = payload.outputPath.replace('.docx', '_Розпорядження.docx')
           await createStructuredResultDocument(orderMatchedItems, orderPath, firstLine)
           

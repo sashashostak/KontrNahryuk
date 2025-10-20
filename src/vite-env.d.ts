@@ -5,6 +5,8 @@ interface OrderProcessPayload {
   outputPath: string
   mode?: string
   searchText?: string
+  excelPath?: string
+  excelSheetsCount?: number
   flags: {
     isOrder: boolean
     tokens: boolean

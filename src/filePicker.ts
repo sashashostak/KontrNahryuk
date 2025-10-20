@@ -77,4 +77,5 @@ export function bindPrettyFile(id: string): void {
 export function initializeFilePickers(): void {
   bindPrettyFile('word-file');
   bindPrettyFile('word-files');
+  bindPrettyFile('order-word-file');
 }
