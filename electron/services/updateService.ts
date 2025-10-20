@@ -489,7 +489,7 @@ class UpdateService extends EventEmitter {
       const batScript = `@echo off
 chcp 65001 > nul
 echo Оновлення KontrNahryuk...
-timeout /t 2 /nobreak > nul
+timeout /t 3 /nobreak > nul
 
 :retry
 del /f /q "%~dp0${path.basename(currentExePath)}"
@@ -499,10 +499,19 @@ if exist "%~dp0${path.basename(currentExePath)}" (
 )
 
 move /y "%~dp0${path.basename(tempExePath)}" "%~dp0${path.basename(currentExePath)}"
+if errorlevel 1 (
+  echo Помилка переміщення файлу!
+  pause
+  exit /b 1
+)
 
-echo Оновлення завершено!
+echo Оновлення завершено! Запуск додатку...
+timeout /t 1 /nobreak > nul
 start "" "%~dp0${path.basename(currentExePath)}"
+
+timeout /t 2 /nobreak > nul
 del "%~f0"
+exit
 `
 
       const batPath = path.join(currentDir, 'update.bat')
@@ -514,6 +523,11 @@ del "%~f0"
         stdio: 'ignore',
         cwd: currentDir
       }).unref()
+      
+      // КРИТИЧНО: Закрити додаток ПІСЛЯ запуску bat
+      setTimeout(() => {
+        app.quit()
+      }, 500)
       
     } else {
       // Це patch файл - замінюємо тільки файли в resources/app/
