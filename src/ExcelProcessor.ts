@@ -1,40 +1,42 @@
 /**
- * ExcelProcessor - Управління зведенням Excel файлів
- * FIXED: Винесено з main.ts (рядки 1580-2025)
+ * ExcelProcessor - Управління UI вкладки "Стройовка"
  * 
- * Відповідальність:
- * - Вибір папки з Excel файлами та файлу призначення
- * - Сканування Excel файлів
- * - Запуск та зупинка процесу зведення
- * - Відображення прогресу обробки
- * - Логування подій
- * - Збереження налаштувань обробки
+ * Функціонал: Копіювання даних Excel на основі підрозділів
+ * - Сканування папки з Excel файлами
+ * - Вибір файлу призначення
+ * - Копіювання колонок C:H за ключем з колонки B
+ * - Обробка двох аркушів: "ЗС" та "БЗ"
  * 
  * @class ExcelProcessor
  */
 
-import type { Mode, StartProcessPayload } from './types';
 import { byId } from './helpers';
+import { SubunitMappingProcessor } from './services/SubunitMappingProcessor';
+import type { ProcessingStats } from './types/MappingTypes';
 
 export class ExcelProcessor {
   private inputFolder: string = '';
   private destinationFile: string = '';
+  private processor: SubunitMappingProcessor;
   private isProcessing: boolean = false;
-  private foundFiles: string[] = [];
 
-  /**
-   * Конструктор - ініціалізує ExcelProcessor
-   * FIXED: Налаштовує слухачів та завантажує збережені налаштування
-   */
   constructor() {
+    this.processor = new SubunitMappingProcessor();
     this.setupEventListeners();
     this.loadSavedSettings();
+    
+    this.logMessage('✅ Модуль обробки Excel ініціалізовано');
+    
+    // 🧪 ТЕСТОВІ ЗНАЧЕННЯ (видалити після тестування)
+    // this.inputFolder = 'D:\\TestFolder';
+    // this.destinationFile = 'D:\\TestFolder\\destination.xlsx';
+    
+    // Оновити стан кнопок після ініціалізації
+    setTimeout(() => this.updateButtonStates(), 100);
   }
 
   /**
-   * Налаштування слухачів подій для UI елементів
-   * FIXED: Підписка на кнопки та чекбокси
-   * @private
+   * Налаштування слухачів подій
    */
   private setupEventListeners(): void {
     // Вибір папки з Excel файлами
@@ -43,17 +45,19 @@ export class ExcelProcessor {
     
     selectFolderBtn?.addEventListener('click', async () => {
       try {
+        console.log('🖱️ Натиснуто кнопку вибору папки');
         const result = await window.api?.selectFolder?.();
+        console.log('📁 Результат вибору папки:', result);
         if (result?.filePath) {
           this.inputFolder = result.filePath;
           inputFolderField!.value = result.filePath;
-          
-          await this.scanForExcelFiles();
-          this.updateProcessButton();
           this.logMessage(`📂 Обрана папка: ${result.filePath}`);
+          await this.saveInputFolderSettings();
+          this.updateButtonStates();
         }
       } catch (error) {
         this.logMessage(`❌ Помилка вибору папки: ${error}`, 'error');
+        console.error('❌ Помилка вибору папки:', error);
       }
     });
 
@@ -63,477 +67,367 @@ export class ExcelProcessor {
     
     selectDestinationBtn?.addEventListener('click', async () => {
       try {
-        // FIXED: Тут би був виклик до API для вибору Excel файлу
-        // const result = await window.api?.selectExcelFile?.();
+        console.log('🖱️ Натиснуто кнопку вибору файлу призначення');
+        const result = await window.api?.selectExcelFile?.();
+        console.log('📄 Результат вибору файлу:', result);
         
-        // Поки що емулюємо вибір файлу
-        const mockResult = {
-          filePath: 'C:\\Excel\\Звідна_таблиця_2024.xlsx'
-        };
-        
-        if (mockResult?.filePath) {
-          this.destinationFile = mockResult.filePath;
-          destinationFileField!.value = mockResult.filePath;
-          this.updateProcessButton();
-          this.logMessage(`💾 Обрано файл призначення: ${mockResult.filePath}`);
-          this.saveDestinationSettings();
+        if (result) {
+          this.destinationFile = result;
+          destinationFileField!.value = result;
+          this.logMessage(`💾 Обрано файл призначення: ${result}`);
+          await this.saveDestinationSettings();
+          this.updateButtonStates();
         }
       } catch (error) {
         this.logMessage(`❌ Помилка вибору файлу призначення: ${error}`, 'error');
+        console.error('❌ Помилка вибору файлу:', error);
       }
     });
 
-    // Початок обробки (виправлено ID)
+    // Початок обробки
     const startBtn = byId('excel-process-btn');
     startBtn?.addEventListener('click', () => {
-      this.startSummarizationProcessing();
+      this.handleStartProcessing();
     });
 
-    // Зупинка обробки (виправлено ID)
+    // Зупинка обробки
     const stopBtn = byId('excel-cancel-btn');
     stopBtn?.addEventListener('click', () => {
-      this.stopProcessing();
+      this.handleStopProcessing();
     });
 
-    // Очищення логів (виправлено ID)
-    const clearLogsBtn = byId('btn-clear-excel-log');
-    clearLogsBtn?.addEventListener('click', () => {
-      this.clearLogs();
-    });
-
-    // Збереження логів (виправлено ID)
-    const saveLogsBtn = byId('btn-save-excel-log');
-    saveLogsBtn?.addEventListener('click', () => {
-      this.saveLogs();
-    });
-
-    // Обробник чекбокса збереження назви файлу
-    const rememberFilenameCheckbox = byId<HTMLInputElement>('excel-remember-filename');
-    rememberFilenameCheckbox?.addEventListener('change', () => {
+    // Автовідкриття файлу
+    const rememberDestinationCheckbox = byId<HTMLInputElement>('excel-remember-destination');
+    rememberDestinationCheckbox?.addEventListener('change', () => {
       this.saveDestinationSettings();
     });
 
-    // Обробники налаштувань обробки
     const sliceCheckbox = byId<HTMLInputElement>('excel-slice-check');
     const mismatchesCheckbox = byId<HTMLInputElement>('excel-mismatches');
     const sanitizerCheckbox = byId<HTMLInputElement>('excel-sanitizer');
+    const enable3BSPCheckbox = byId<HTMLInputElement>('enable3BSP');
+    const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+    const duplicatesCheckbox = byId<HTMLInputElement>('excel-duplicates');
     
     sliceCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
     mismatchesCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
     sanitizerCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
-
-    // Обробники радіо-кнопок режиму зведення
-    const modeRadios = document.querySelectorAll('input[name="excel-mode"]');
-    modeRadios.forEach(radio => {
-      radio.addEventListener('change', () => this.saveSummarizationMode());
-    });
+    enable3BSPCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    autoOpenCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    duplicatesCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
   }
 
   /**
-   * Сканування папки на наявність Excel файлів
-   * FIXED: Асинхронне сканування через API
-   * @private
+   * Обробник початку процесу обробки
    */
-  private async scanForExcelFiles(): Promise<void> {
-    try {
-      if (!this.inputFolder) {
-        this.logMessage(`⚠️ Папка не вибрана`, 'error');
-        return;
-      }
-
-      this.logMessage(`🔍 Сканування папки: ${this.inputFolder}`);
-
-      // Викликаємо API для сканування Excel файлів
-      const foundFiles = await window.api?.scanExcelFiles?.(this.inputFolder);
-      
-      if (foundFiles && foundFiles.length > 0) {
-        this.foundFiles = foundFiles;
-        this.displayFoundFiles();
-        this.logMessage(`✅ Знайдено ${this.foundFiles.length} Excel файлів`);
-      } else {
-        this.foundFiles = [];
-        this.displayFoundFiles();
-        this.logMessage(`ℹ️ Excel файли не знайдено в обраній папці`);
-      }
-      
-      this.updateProcessButton();
-    } catch (error) {
-      this.logMessage(`❌ Помилка сканування файлів: ${error}`, 'error');
-      this.foundFiles = [];
-      this.displayFoundFiles();
-    }
-  }
-
-  /**
-   * Відображення знайдених файлів
-   * FIXED: Приховує область (тимчасово відключено)
-   * @private
-   */
-  private displayFoundFiles(): void {
-    // Приховуємо область знайдених файлів (тимчасово відключено)
-    const filesPreview = byId('excel-files-preview');
-    if (filesPreview) {
-      filesPreview.style.display = 'none';
-    }
-  }
-
-  /**
-   * Оновлення стану кнопки "Почати обробку"
-   * FIXED: Активує/деактивує кнопку залежно від готовності
-   * @private
-   */
-  private updateProcessButton(): void {
-    const startBtn = byId<HTMLButtonElement>('excel-start-processing');
-    // FIXED: Не перевіряємо foundFiles.length, оскільки область файлів прихована
-    const canProcess = this.inputFolder && this.destinationFile && !this.isProcessing;
-    
-    if (startBtn) {
-      startBtn.disabled = !canProcess;
-    }
-  }
-
-  /**
-   * Запуск процесу зведення Excel файлів
-   * FIXED: Валідація, формування payload, виклик API
-   * @private
-   */
-  private async startSummarizationProcessing(): Promise<void> {
-    if (this.isProcessing) return;
-    
-    // Валідація вхідних даних
-    if (!this.inputFolder || !this.destinationFile) {
-      this.logMessage('❌ Не всі обов\'язкові поля заповнені', 'error');
+  private async handleStartProcessing(): Promise<void> {
+    if (this.isProcessing) {
+      this.logMessage('⚠️ Обробка вже виконується', 'warn');
       return;
     }
 
+    // Валідація вхідних даних
+    if (!this.inputFolder) {
+      this.logMessage('❌ Оберіть папку з Excel файлами', 'error');
+      return;
+    }
+
+    if (!this.destinationFile) {
+      this.logMessage('❌ Оберіть файл призначення', 'error');
+      return;
+    }
+    
     this.isProcessing = true;
-    
-    // Отримуємо режим зведення
-    const selectedMode = document.querySelector('input[name="excel-mode"]:checked') as HTMLInputElement;
-    const mode: Mode = (selectedMode?.value as Mode) || 'Обидва';
-    
-    this.logMessage(`🚀 Початок зведення Excel файлів. Режим: ${mode}`);
-    
-    // Показуємо прогрес
-    const progressSection = byId('excel-progress');
-    const startBtn = byId<HTMLButtonElement>('excel-start-processing');
-    const stopBtn = byId<HTMLButtonElement>('excel-stop-processing');
-    
-    progressSection!.style.display = 'block';
-    startBtn!.style.display = 'none';
-    stopBtn!.style.display = 'inline-block';
+    this.updateButtonStates();
 
     try {
-      // Підготовка payload для зведення
-      const payload: StartProcessPayload = {
-        srcFolder: this.inputFolder,
-        dstPath: this.destinationFile,
-        mode: mode,
-        // dstSheetPassword: undefined, // поки що не підтримуємо
-        // configPath: undefined // використовуємо вбудовану конфігурацію
-      };
+      this.logMessage('🚀 Початок обробки файлів...');
+      this.logMessage(`📂 Папка: ${this.inputFolder}`);
+      this.logMessage(`💾 Призначення: ${this.destinationFile}`);
+      this.logMessage('');
+      
+      console.log('🔄 Викликаємо processor.process...');
 
-      this.logMessage(`📁 Папка джерела: ${payload.srcFolder}`);
-      this.logMessage(`💾 Файл призначення: ${payload.dstPath}`);
-      this.logMessage(`📊 Режим обробки: ${payload.mode}`);
+      const stats = await this.processor.process(
+        this.inputFolder,
+        this.destinationFile,
+        (percent: number, message: string) => {
+          this.updateProgress(message, percent);
+          this.logMessage(message);
+        }
+      );
 
-      // FIXED: Mock обробки (в реальному застосунку тут би був виклик до нового API)
-      await this.mockSummarizationProcess(payload);
+      this.displayStats(stats);
+      this.logMessage('');
+      this.logMessage('✅ Обробка завершена успішно!', 'success');
       
-    } catch (error) {
-      this.logMessage(`❌ Помилка зведення: ${error}`, 'error');
-    } finally {
-      this.stopProcessing();
-    }
-  }
-
-  /**
-   * Mock процес зведення для демонстрації
-   * FIXED: Емуляція процесу зведення з прогресом
-   * @private
-   */
-  private async mockSummarizationProcess(payload: StartProcessPayload): Promise<void> {
-    // Mock процес зведення для демонстрації
-    this.logMessage('🔧 Сканування папки та завантаження конфігурації...');
-    this.updateProgress(10, 'Ініціалізація', 'Завантаження конфігурації');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Отримуємо налаштування обробки
-    const sliceCheck = byId<HTMLInputElement>('excel-slice-check')?.checked || false;
-    const mismatches = byId<HTMLInputElement>('excel-mismatches')?.checked || false;
-    const sanitizer = byId<HTMLInputElement>('excel-sanitizer')?.checked || false;
-    
-    const activeOptions = [];
-    if (sliceCheck) activeOptions.push('Slice_Check');
-    if (mismatches) activeOptions.push('Mismatches');  
-    if (sanitizer) activeOptions.push('Sanitizer');
-    
-    this.logMessage(`🔧 Активні опції: ${activeOptions.join(', ')}`);
-    
-    // Імітація обробки за режимами
-    const modes = payload.mode === 'Обидва' ? ['БЗ', 'ЗС'] : [payload.mode];
-    let totalFiles = 0;
-    let totalRows = 0;
-    
-    for (let i = 0; i < modes.length; i++) {
-      const currentMode = modes[i];
-      const progress = Math.round(((i + 1) / modes.length) * 80) + 10; // 10-90%
-      
-      this.logMessage(`📂 Режим ${i + 1}/${modes.length}: ${currentMode}`);
-      this.updateProgress(progress, `Обробка режиму ${currentMode}`, `Режим ${i + 1}/${modes.length}`);
-      
-      // Mock правила для режиму
-      const rules = currentMode === 'БЗ' 
-        ? ['1РСпП', '2РСпП', '3РСпП', 'РВПСпП', 'МБ', 'РБпС', 'ВРСП', 'ВРЕБ', 'ВІ', 'ВЗ', 'РМТЗ', 'МП', '1241']
-        : ['1РСпП', '2РСпП', '3РСпП', 'РВПСпП', 'МБ', 'РБпС', 'ВРСП', 'ВРЕБ', 'ВІ', 'ВЗ', 'РМТЗ', 'МП'];
-      
-      this.logMessage(`📋 Обробка ${rules.length} правил для режиму ${currentMode}`);
-      
-      for (let j = 0; j < rules.length; j++) {
-        if (!this.isProcessing) break;
-        
-        const rule = rules[j];
-        this.logMessage(`📄 Правило "${rule}": пошук файлу...`);
-        
-        // Імітація пошуку та обробки
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 700));
-        
-        if (Math.random() > 0.2) { // 80% успішності
-          const rows = Math.floor(Math.random() * 20) + 5;
-          totalFiles++;
-          totalRows += rows;
-          this.logMessage(`✅ Правило "${rule}": знайдено файл, скопійовано ${rows} рядків`);
-        } else {
-          this.logMessage(`⚠️ Правило "${rule}": файл не знайдено`, 'error');
+      // Автовідкриття файлу якщо налаштування увімкнене
+      const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+      if (autoOpenCheckbox?.checked) {
+        this.logMessage('📂 Відкриваю результат...', 'info');
+        try {
+          await window.api?.openExternal?.(this.destinationFile);
+        } catch (openError) {
+          console.error('Failed to open file:', openError);
+          this.logMessage('⚠️ Не вдалося автоматично відкрити файл', 'warn');
         }
       }
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       
-      this.logMessage(`✅ Режим "${currentMode}" завершено`);
+      // Перевірка на помилку "Permission denied" або "відкритий в іншій програмі"
+      if (errorMsg.includes('Permission denied') || 
+          errorMsg.includes('відкритий в іншій програмі') ||
+          errorMsg.includes('Errno 13')) {
+        this.logMessage('❌ ФАЙЛ ЗАБЛОКОВАНИЙ!', 'error');
+        this.logMessage('', 'error');
+        this.logMessage('Файл призначення відкритий в Excel або іншій програмі.', 'error');
+        this.logMessage('', 'error');
+        this.logMessage('🔧 Закрийте файл та спробуйте ще раз.', 'error');
+        
+        // Показуємо alert для користувача
+        alert(
+          '❌ Файл заблокований!\n\n' +
+          'Файл призначення відкритий в Excel або іншій програмі.\n\n' +
+          '🔧 Закрийте файл та спробуйте ще раз.'
+        );
+      } else {
+        this.logMessage(`❌ Помилка обробки: ${errorMsg}`, 'error');
+      }
+      
+      console.error('Processing error:', error);
+    } finally {
+      this.isProcessing = false;
+      this.updateButtonStates();
+      this.resetProgress();
+    }
+  }
+
+  /**
+   * Обробник зупинки процесу
+   */
+  private handleStopProcessing(): void {
+    if (!this.isProcessing) {
+      return;
+    }
+
+    this.logMessage('🛑 Зупинка обробки...', 'warn');
+    // TODO: Implement cancellation logic if needed
+    this.isProcessing = false;
+    this.updateButtonStates();
+    this.resetProgress();
+  }
+
+  /**
+   * Відображення статистики обробки
+   */
+  private displayStats(stats: ProcessingStats): void {
+    this.logMessage('');
+    this.logMessage('═══════════════════════════════════════');
+    this.logMessage('📊 СТАТИСТИКА ОБРОБКИ');
+    this.logMessage('═══════════════════════════════════════');
+    this.logMessage(`📁 Оброблено файлів: ${stats.processedFiles} з ${stats.totalFiles}`);
+    this.logMessage(`✅ Скопійовано рядків (ЗС): ${stats.totalCopiedRowsZS}`);
+    this.logMessage(`✅ Скопійовано рядків (БЗ): ${stats.totalCopiedRowsBZ}`);
+    this.logMessage(`⏱️ Час обробки: ${(stats.processingTime / 1000).toFixed(2)} сек`);
+    
+    if (stats.allMissingSubunits.length > 0) {
+      this.logMessage('');
+      this.logMessage('⚠️ Підрозділи не знайдені в файлі призначення:');
+      const uniqueMissing = [...new Set(stats.allMissingSubunits)];
+      uniqueMissing.slice(0, 10).forEach(subunit => {
+        this.logMessage(`   • ${subunit}`);
+      });
+      if (uniqueMissing.length > 10) {
+        this.logMessage(`   ... та ще ${uniqueMissing.length - 10} підрозділів`);
+      }
+    }
+    this.logMessage('═══════════════════════════════════════');
+  }
+
+  /**
+   * Оновлення прогресу обробки
+   */
+  private updateProgress(phase: string, progress: number): void {
+    const progressBar = byId('excel-progress');
+    const progressText = byId('excel-progress-text');
+    
+    if (progressBar) {
+      progressBar.style.width = `${progress}%`;
     }
     
-    // Фінальний етап
-    this.updateProgress(95, 'Збереження результатів', 'Запис у файл призначення');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    this.logMessage(`🎉 Зведення завершено успішно!`);
-    this.logMessage(`📈 Підсумок: файлів - ${totalFiles}, рядків - ${totalRows}`);
-    this.logMessage(`💾 Результат збережено: ${payload.dstPath}`);
-    
-    this.updateProgress(100, 'Завершено', `Оброблено ${modes.length} режим(ів)`);
+    if (progressText) {
+      progressText.textContent = `${phase} - ${Math.round(progress)}%`;
+    }
   }
 
   /**
-   * Зупинка обробки
-   * FIXED: Скидає прапор та ховає прогрес
-   * @private
+   * Скидання прогресу
    */
-  private stopProcessing(): void {
-    this.isProcessing = false;
+  private resetProgress(): void {
+    const progressBar = byId('excel-progress');
+    const progressText = byId('excel-progress-text');
     
-    const progressSection = byId('excel-progress');
-    const startBtn = byId<HTMLButtonElement>('excel-start-processing');
-    const stopBtn = byId<HTMLButtonElement>('excel-stop-processing');
+    if (progressBar) {
+      progressBar.style.width = '0%';
+    }
     
-    progressSection!.style.display = 'none';
-    startBtn!.style.display = 'inline-block';
-    stopBtn!.style.display = 'none';
-    
-    this.updateProcessButton();
-    this.logMessage('⏹️ Обробку зупинено користувачем');
+    if (progressText) {
+      progressText.textContent = '';
+    }
   }
 
   /**
-   * Оновлення відображення прогресу
-   * FIXED: Оновлює прогрес-бар та текст статусу
-   * @private
+   * Оновлення стану кнопок
    */
-  private updateProgress(percent: number, status: string, detail: string): void {
-    const progressFill = byId('excel-progress-fill');
-    const progressPercent = byId('excel-progress-percent');
-    const progressStatus = byId('excel-progress-status');
-    const progressDetail = byId('excel-progress-detail');
+  private updateButtonStates(): void {
+    const startBtn = byId<HTMLButtonElement>('excel-process-btn');
+    const stopBtn = byId<HTMLButtonElement>('excel-cancel-btn');
     
-    if (progressFill) progressFill.style.width = `${percent}%`;
-    if (progressPercent) progressPercent.textContent = `${percent}%`;
-    if (progressStatus) progressStatus.textContent = status;
-    if (progressDetail) progressDetail.textContent = detail;
+    if (startBtn) {
+      // Кнопка активна тільки якщо обрані папка та файл призначення
+      const canStart = !this.isProcessing && this.inputFolder && this.destinationFile;
+      startBtn.disabled = !canStart;
+      
+      // Додаємо підказку
+      if (!this.inputFolder || !this.destinationFile) {
+        startBtn.title = 'Оберіть папку з файлами та файл призначення';
+      } else {
+        startBtn.title = 'Розпочати обробку Excel файлів';
+      }
+    }
+    
+    if (stopBtn) {
+      stopBtn.disabled = !this.isProcessing;
+    }
   }
 
   /**
    * Логування повідомлень
-   * FIXED: Додає timestamp та емодзі іконки
-   * @private
    */
-  private logMessage(message: string, type: 'info' | 'error' = 'info'): void {
-    const logsContent = byId('excel-logs-content');
-    const timestamp = new Date().toLocaleTimeString('uk-UA');
-    const prefix = type === 'error' ? '❌' : 'ℹ️';
-    
-    if (logsContent) {
-      logsContent.textContent += `[${timestamp}] ${prefix} ${message}\n`;
-      logsContent.scrollTop = logsContent.scrollHeight;
-    }
+  private logMessage(message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info'): void {
+    // Логування видалено з UI
+    console.log(`[${level.toUpperCase()}] ${message}`);
   }
 
   /**
-   * Очищення логів
-   * FIXED: Скидає вміст логів
-   * @private
+   * Збереження налаштувань папки введення
    */
-  private clearLogs(): void {
-    const logsContent = byId('excel-logs-content');
-    if (logsContent) {
-      logsContent.textContent = 'Готово до початку обробки...\n';
-    }
-  }
-
-  /**
-   * Збереження логів у файл
-   * FIXED: Завантажує файл з логами
-   * @private
-   */
-  private async saveLogs(): Promise<void> {
+  private async saveInputFolderSettings(): Promise<void> {
     try {
-      const logsContent = byId('excel-logs-content')?.textContent || '';
-      if (!logsContent.trim()) {
-        this.logMessage('⚠️ Немає логів для збереження');
-        return;
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `excel-processing-logs-${timestamp}.txt`;
-      
-      // FIXED: Тут би був виклик до electron API для збереження файлу
-      // const result = await window.api?.saveFile?.(filename, logsContent);
-      
-      this.logMessage(`💾 Логи збережено: ${filename}`);
+      await window.api?.setSetting?.('excel.inputFolder', this.inputFolder);
     } catch (error) {
-      this.logMessage(`❌ Помилка збереження логів: ${error}`, 'error');
-    }
-  }
-
-  /**
-   * Завантаження збережених налаштувань
-   * FIXED: Завантажує збережені налаштування з API
-   * @private
-   */
-  private async loadSavedSettings(): Promise<void> {
-    try {
-      // Завантажуємо збережений файл призначення
-      const savedDestination = await window.api?.getSetting?.('excelDestinationFile', '');
-      const destinationFileField = byId<HTMLInputElement>('excel-destination-file');
-      
-      if (destinationFileField && savedDestination) {
-        destinationFileField.value = savedDestination;
-        this.destinationFile = savedDestination;
-      }
-
-      // Завантажуємо стан чекбокса збереження призначення
-      const rememberDestination = await window.api?.getSetting?.('excelRememberDestination', true);
-      const rememberDestinationCheckbox = byId<HTMLInputElement>('excel-remember-destination');
-      
-      if (rememberDestinationCheckbox) {
-        rememberDestinationCheckbox.checked = rememberDestination;
-      }
-
-      // Завантажуємо налаштування обробки
-      const sliceCheck = await window.api?.getSetting?.('excelSliceCheck', true);
-      const mismatches = await window.api?.getSetting?.('excelMismatches', true);
-      const sanitizer = await window.api?.getSetting?.('excelSanitizer', true);
-      
-      const sliceCheckbox = byId<HTMLInputElement>('excel-slice-check');
-      const mismatchesCheckbox = byId<HTMLInputElement>('excel-mismatches');
-      const sanitizerCheckbox = byId<HTMLInputElement>('excel-sanitizer');
-      
-      if (sliceCheckbox) sliceCheckbox.checked = sliceCheck;
-      if (mismatchesCheckbox) mismatchesCheckbox.checked = mismatches;
-      if (sanitizerCheckbox) sanitizerCheckbox.checked = sanitizer;
-
-      // Завантажуємо вибраний режим зведення
-      const savedMode = await window.api?.getSetting?.('excelSummarizationMode', 'Обидва');
-      const modeRadio = byId<HTMLInputElement>(`excel-mode-${savedMode === 'БЗ' ? 'bz' : savedMode === 'ЗС' ? 'zs' : 'both'}`);
-      if (modeRadio) {
-        modeRadio.checked = true;
-      }
-
-      this.logMessage('📁 Збережені налаштування завантажено');
-    } catch (error) {
-      console.warn('Не вдалося завантажити збережені налаштування:', error);
+      console.error('Failed to save input folder settings:', error);
     }
   }
 
   /**
    * Збереження налаштувань файлу призначення
-   * FIXED: Зберігає шлях до файлу та режим зведення
-   * @private
    */
   private async saveDestinationSettings(): Promise<void> {
+    const rememberCheckbox = byId<HTMLInputElement>('excel-remember-destination');
+    const shouldRemember = rememberCheckbox?.checked ?? false;
+
     try {
-      const rememberDestinationCheckbox = byId<HTMLInputElement>('excel-remember-destination');
+      await window.api?.setSetting?.('excel.rememberDestination', shouldRemember);
       
-      if (rememberDestinationCheckbox?.checked && this.destinationFile) {
-        await window.api?.setSetting?.('excelDestinationFile', this.destinationFile);
+      if (shouldRemember) {
+        await window.api?.setSetting?.('excel.destinationFile', this.destinationFile);
       }
-      
-      await window.api?.setSetting?.('excelRememberDestination', rememberDestinationCheckbox?.checked || false);
-      
-      // Зберігаємо режим зведення
-      const selectedMode = document.querySelector<HTMLInputElement>('input[name="excel-mode"]:checked');
-      if (selectedMode) {
-        const mode = selectedMode.value === 'bz' ? 'БЗ' : selectedMode.value === 'zs' ? 'ЗС' : 'Обидва';
-        await window.api?.setSetting?.('excelSummarizationMode', mode);
-      }
-      
-      // Зберігаємо налаштування чекбоксів
-      const sliceCheck = byId<HTMLInputElement>('excel-slice-check')?.checked || false;
-      const mismatches = byId<HTMLInputElement>('excel-mismatches')?.checked || false;
-      const sanitizer = byId<HTMLInputElement>('excel-sanitizer')?.checked || false;
-      
-      await window.api?.setSetting?.('excelSliceCheck', sliceCheck);
-      await window.api?.setSetting?.('excelMismatches', mismatches);
-      await window.api?.setSetting?.('excelSanitizer', sanitizer);
-      
     } catch (error) {
-      console.warn('Не вдалося зберегти налаштування:', error);
+      console.error('Failed to save destination settings:', error);
     }
   }
 
   /**
    * Збереження налаштувань обробки
-   * FIXED: Зберігає чекбокси опцій
-   * @private
    */
   private async saveProcessingSettings(): Promise<void> {
+    const sliceCheckbox = byId<HTMLInputElement>('excel-slice-check');
+    const mismatchesCheckbox = byId<HTMLInputElement>('excel-mismatches');
+    const sanitizerCheckbox = byId<HTMLInputElement>('excel-sanitizer');
+    const enable3BSPCheckbox = byId<HTMLInputElement>('enable3BSP');
+    const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+    const duplicatesCheckbox = byId<HTMLInputElement>('excel-duplicates');
+
     try {
-      const sliceCheck = byId<HTMLInputElement>('excel-slice-check')?.checked || false;
-      const mismatches = byId<HTMLInputElement>('excel-mismatches')?.checked || false;
-      const sanitizer = byId<HTMLInputElement>('excel-sanitizer')?.checked || false;
-      
-      await window.api?.setSetting?.('excelSliceCheck', sliceCheck);
-      await window.api?.setSetting?.('excelMismatches', mismatches);
-      await window.api?.setSetting?.('excelSanitizer', sanitizer);
-      
-      this.logMessage(`💾 Налаштування збережено: Slice_Check=${sliceCheck}, Mismatches=${mismatches}, Sanitizer=${sanitizer}`);
+      await window.api?.setSetting?.('excel.enableSliceCheck', sliceCheckbox?.checked ?? false);
+      await window.api?.setSetting?.('excel.showMismatches', mismatchesCheckbox?.checked ?? false);
+      await window.api?.setSetting?.('excel.enableSanitizer', sanitizerCheckbox?.checked ?? false);
+      await window.api?.setSetting?.('enable3BSP', enable3BSPCheckbox?.checked ?? false);
+      await window.api?.setSetting?.('excel.autoOpen', autoOpenCheckbox?.checked ?? false);
+      await window.api?.setSetting?.('excel.enableDuplicates', duplicatesCheckbox?.checked ?? false);
     } catch (error) {
-      console.warn('Не вдалося зберегти налаштування обробки:', error);
+      console.error('Failed to save processing settings:', error);
     }
   }
 
   /**
-   * Збереження режиму зведення
-   * FIXED: Зберігає вибраний режим (БЗ/ЗС/Обидва)
-   * @private
+   * Завантаження збережених налаштувань
    */
-  private async saveSummarizationMode(): Promise<void> {
+  private async loadSavedSettings(): Promise<void> {
     try {
-      const selectedMode = document.querySelector('input[name="excel-mode"]:checked') as HTMLInputElement;
-      const mode = selectedMode?.value || 'Обидва';
-      
-      await window.api?.setSetting?.('excelSummarizationMode', mode);
-      
-      this.logMessage(`💾 Режим зведення збережено: ${mode}`);
+      // Завантаження папки введення
+      const savedInputFolder = await window.api?.getSetting?.('excel.inputFolder', '');
+      if (savedInputFolder) {
+        this.inputFolder = savedInputFolder;
+        const inputFolderField = byId<HTMLInputElement>('excel-input-folder');
+        if (inputFolderField) {
+          inputFolderField.value = savedInputFolder;
+        }
+      }
+
+      // Завантаження файлу призначення
+      const shouldRemember = await window.api?.getSetting?.('excel.rememberDestination', false);
+      const rememberCheckbox = byId<HTMLInputElement>('excel-remember-destination');
+      if (rememberCheckbox) {
+        rememberCheckbox.checked = shouldRemember;
+      }
+
+      if (shouldRemember) {
+        const savedDestination = await window.api?.getSetting?.('excel.destinationFile', '');
+        if (savedDestination) {
+          this.destinationFile = savedDestination;
+          const destinationField = byId<HTMLInputElement>('excel-destination-file');
+          if (destinationField) {
+            destinationField.value = savedDestination;
+          }
+        }
+      }
+
+      // Завантаження налаштувань обробки
+      const sliceCheckbox = byId<HTMLInputElement>('excel-slice-check');
+      const mismatchesCheckbox = byId<HTMLInputElement>('excel-mismatches');
+      const sanitizerCheckbox = byId<HTMLInputElement>('excel-sanitizer');
+      const enable3BSPCheckbox = byId<HTMLInputElement>('enable3BSP');
+      const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+      const duplicatesCheckbox = byId<HTMLInputElement>('excel-duplicates');
+
+      if (sliceCheckbox) {
+        sliceCheckbox.checked = await window.api?.getSetting?.('excel.enableSliceCheck', false);
+      }
+      if (mismatchesCheckbox) {
+        mismatchesCheckbox.checked = await window.api?.getSetting?.('excel.showMismatches', false);
+      }
+      if (sanitizerCheckbox) {
+        sanitizerCheckbox.checked = await window.api?.getSetting?.('excel.enableSanitizer', false);
+      }
+      if (enable3BSPCheckbox) {
+        enable3BSPCheckbox.checked = await window.api?.getSetting?.('enable3BSP', false);
+      }
+      if (autoOpenCheckbox) {
+        autoOpenCheckbox.checked = await window.api?.getSetting?.('excel.autoOpen', true);
+      }
+      if (duplicatesCheckbox) {
+        duplicatesCheckbox.checked = await window.api?.getSetting?.('excel.enableDuplicates', false);
+      }
+
+      // Оновити стан кнопок після завантаження налаштувань
+      this.updateButtonStates();
+
     } catch (error) {
-      console.warn('Не вдалося зберегти режим зведення:', error);
+      console.error('Failed to load saved settings:', error);
     }
   }
 }

@@ -42,7 +42,7 @@ import { byId, log } from './helpers';
 import { SectionManager } from './SectionManager';
 import { SourceSelectionManager } from './SourceSelectionManager';
 import { UpdateManager } from './UpdateManager';
-import { ExcelProcessor } from './ExcelProcessor';
+import { ExcelProcessor } from './ExcelProcessor'; // Excel processing UI controller
 
 // Services
 import { ThemeService } from './services/ThemeService';

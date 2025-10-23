@@ -52,6 +52,9 @@ interface ElectronAPI {
   
   chooseSavePath(suggestName?: string): Promise<string | undefined>
   selectFolder(): Promise<{ filePath: string } | undefined>
+  readDirectory(folderPath: string): Promise<Array<{ name: string, path: string }>>
+  readExcelFile(filePath: string): Promise<ArrayBuffer>
+  writeExcelFile(filePath: string, buffer: ArrayBuffer): Promise<void>
   
   processOrder(payload: OrderProcessPayload): Promise<any>
 }
@@ -111,6 +114,9 @@ contextBridge.exposeInMainWorld('api', {
 
   chooseSavePath: (suggestName?: string): Promise<string | undefined> => ipcRenderer.invoke('dialog:save', { suggestName }),
   selectFolder: (): Promise<{ filePath: string } | undefined> => ipcRenderer.invoke('dialog:select-folder'),
+  readDirectory: (folderPath: string): Promise<Array<{ name: string, path: string }>> => ipcRenderer.invoke('fs:read-directory', folderPath),
+  readExcelFile: (filePath: string): Promise<ArrayBuffer> => ipcRenderer.invoke('fs:read-excel-file', filePath),
+  writeExcelFile: (filePath: string, buffer: ArrayBuffer): Promise<void> => ipcRenderer.invoke('fs:write-excel-file', filePath, buffer),
   
   processOrder: (payload: OrderProcessPayload): Promise<any> => ipcRenderer.invoke('order:process', payload),
 } as ElectronAPI)

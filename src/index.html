@@ -13,7 +13,7 @@
         <div class="brand">🐷 Нахрюк</div>
         <nav class="nav">
           <a href="#/functions" id="nav-func">📄 Накази</a>
-          <a href="#/excel" id="nav-excel">📊 Excel обробка</a>
+          <a href="#/excel" id="nav-excel">📊 Стройовка</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -180,8 +180,8 @@
 
         <section data-route="/excel" class="route" hidden>
           <div class="card">
-            <h3>📊 Excel обробка</h3>
-            <p class="subtitle">Обробка Excel файлів з папки з детальним логуванням</p>
+            <h3>📊 Стройовка</h3>
+            <p class="subtitle">Зведення стройових з місяців до основної таблиці</p>
             
             <div class="excel-container">
               <!-- Вибір папки з Excel файлами -->
@@ -214,7 +214,7 @@
                       <input class="input" id="excel-destination-file" placeholder="Виберіть існуючий Excel файл..." readonly>
                       <button class="btn" id="excel-select-destination">📄 Відкрити файл</button>
                     </div>
-                    <small class="hint">Інформація буде скопійована в обраний файл за вибраною логікою (БЗ/ЗС/Обидва)</small>
+                    <small class="hint">Дані з колонок C-H будуть скопійовані в обидва аркуші (БЗ та ЗС) за ключем з колонки B</small>
                   </label>
                   
                   <div class="field checkbox-field">
@@ -250,31 +250,25 @@
                       <span>Sanitizer</span>
                     </label>
                   </div>
-                </div>
-              </div>
-
-              <!-- Режим зведення -->
-              <div class="excel-card">
-                <h4>📊 Режим зведення даних</h4>
-                <div class="form">
-                  <div class="field radio-field">
+                  
+                  <div class="field checkbox-field">
                     <label>
-                      <input type="radio" name="excel-mode" value="bz" id="excel-mode-bz">
-                      <span>БЗ (Бойове забезпечення)</span>
+                      <input type="checkbox" id="enable3BSP" class="nose" checked>
+                      <span>3БСП</span>
                     </label>
                   </div>
                   
-                  <div class="field radio-field">
+                  <div class="field checkbox-field">
                     <label>
-                      <input type="radio" name="excel-mode" value="zs" id="excel-mode-zs">
-                      <span>ЗС (Загальна служба)</span>
+                      <input type="checkbox" id="excel-duplicates" class="nose" checked>
+                      <span>Дублі</span>
                     </label>
                   </div>
                   
-                  <div class="field radio-field">
+                  <div class="field checkbox-field">
                     <label>
-                      <input type="radio" name="excel-mode" value="both" id="excel-mode-both" checked>
-                      <span>Обидва режими</span>
+                      <input type="checkbox" id="excel-autoopen" class="nose" checked>
+                      <span>Автовідкриття</span>
                     </label>
                   </div>
                 </div>
@@ -284,18 +278,6 @@
               <div class="excel-actions">
                 <button class="btn primary" id="excel-process-btn">🚀 Розпочати обробку</button>
                 <button class="btn ghost" id="excel-cancel-btn" style="display: none;">❌ Скасувати</button>
-              </div>
-
-              <!-- Лог виконання -->
-              <div class="excel-log">
-                <h4>Лог виконання</h4>
-                <div class="log-controls">
-                  <button class="btn ghost small" id="btn-clear-excel-log">Очистити</button>
-                  <button class="btn ghost small" id="btn-save-excel-log">Зберегти лог</button>
-                </div>
-                <div class="log-container">
-                  <pre id="excel-log-body" class="log-body"></pre>
-                </div>
               </div>
             </div>
           </div>

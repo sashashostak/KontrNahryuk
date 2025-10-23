@@ -32,6 +32,9 @@ interface Window {
     addNote(text: string): Promise<{id:string, text:string, createdAt:number}>
     listNotes(): Promise<{id:string, text:string, createdAt:number}[]>
     
+    // Generic IPC invoke
+    invoke(channel: string, ...args: any[]): Promise<any>
+    
     // Updates API
     checkForUpdates(): Promise<{
       state: 'idle' | 'checking' | 'uptodate' | 'available' | 'mandatory' | 'downloading' | 'verifying' | 'installing' | 'restarting' | 'failed'
@@ -67,6 +70,9 @@ interface Window {
     
     chooseSavePath(suggestName?: string): Promise<string | undefined>
     selectFolder(): Promise<{ filePath: string } | undefined>
+    readDirectory(folderPath: string): Promise<Array<{ name: string, path: string }>>
+    readExcelFile(filePath: string): Promise<ArrayBuffer>
+    writeExcelFile(filePath: string, buffer: ArrayBuffer): Promise<void>
     processOrder(payload: OrderProcessPayload): Promise<{
       ok: boolean
       out?: string

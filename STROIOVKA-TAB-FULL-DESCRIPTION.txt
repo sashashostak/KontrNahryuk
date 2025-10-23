@@ -1,0 +1,542 @@
+СТРОЙОВКА — ПОВНИЙ ОПИС ТА КОД ВКЛАДКИ
+
+Огляд
+- Призначення: Зведення стройових із місячних файлів до єдиного файлу призначення по підрозділах.
+- Технології: Electron (Renderer + Main), TypeScript, Python 3.11 + openpyxl.
+- Архітектура табу:
+  1) UI (src/index.html) — розмітка вкладки «Стройовка».
+  2) Контролер (src/ExcelProcessor.ts) — логіка UI, валідація, прогрес, запуск обробки.
+  3) Сервіс (src/services/SubunitMappingProcessor.ts) — готує конфіг, викликає Python.
+  4) Python (python/excel_processor.py) — реальна обробка Excel (копіювання, 3БСП, LOG лист).
+  5) IPC API (electron/preload.ts, electron/main.ts, electron/services/osIntegration.ts) — selectFolder, selectExcelFile, getSetting/setSetting, invoke, openExternal.
+
+Основні можливості
+- Вибір папки з Excel файлами та файлу призначення.
+- Копіювання для листів: ЗС (ключ B, дані C:H), БЗ (ключ C, дані D:H).
+- Спецлогіка:
+  • 1241 — обробляється ТІЛЬКИ БЗ з ключем у колонці C; ЗС пропускається.
+  • 3БСП — пряме копіювання діапазону C4:H231 із аркуша «3бСпП БЗ».
+- Налаштування:
+  • Slice_Check, Mismatches, Sanitizer, 3БСП, Автовідкриття.
+  • Запам’ятати файл призначення.
+- LOG лист у файлі результату: зведення операцій копіювання.
+- Автовідкриття файлу результату після успішної обробки.
+
+────────────────────────────────────────────────────────────────────────
+1) UI розмітка вкладки «Стройовка» (src/index.html)
+
+<ПОЧАТОК КОДУ>
+[Фрагмент із src/index.html]
+
+<section data-route="/excel" class="route" hidden>
+  <div class="card">
+    <h3>📊 Стройовка</h3>
+    <p class="subtitle">Зведення стройових з місяців до основної таблиці</p>
+    
+    <div class="excel-container">
+      <!-- Вибір папки з Excel файлами -->
+      <div class="excel-card">
+        <h4>🗂️ Вибір папки з Excel файлами</h4>
+        <div class="form">
+          <label class="field">
+            <span class="label">Папка з Excel файлами</span>
+            <div class="row">
+              <input class="input" id="excel-input-folder" placeholder="Виберіть папку з Excel файлами..." readonly>
+              <button class="btn" id="excel-select-folder">📂 Вибрати папку</button>
+            </div>
+          </label>
+          
+          <!-- Приховано до виправлення проблеми з відображенням файлів -->
+          <!-- <div id="excel-files-preview" class="files-preview" style="display: none;">
+            <h5>Знайдені файли:</h5>
+            <div id="excel-files-list" class="files-list"></div>
+          </div> -->
+        </div>
+      </div>
+
+      <!-- Файл призначення -->
+      <div class="excel-card">
+        <h4>💾 Файл призначення</h4>
+        <div class="form">
+          <label class="field">
+            <span class="label">Оберіть Excel файл куди буде перенесена інформація</span>
+            <div class="row">
+              <input class="input" id="excel-destination-file" placeholder="Виберіть існуючий Excel файл..." readonly>
+              <button class="btn" id="excel-select-destination">📄 Відкрити файл</button>
+            </div>
+            <small class="hint">Дані з колонок C-H будуть скопійовані в обидва аркуші (БЗ та ЗС) за ключем з колонки B</small>
+          </label>
+          
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="excel-remember-destination" class="nose" checked>
+              <span>Запам'ятати файл призначення для наступних сесій</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Налаштування обробки -->
+      <div class="excel-card">
+        <h4>⚙️ Налаштування обробки</h4>
+        <div class="form">
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="excel-slice-check" class="nose" checked>
+              <span>Slice_Check</span>
+            </label>
+          </div>
+          
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="excel-mismatches" class="nose" checked>
+              <span>Mismatches</span>
+            </label>
+          </div>
+          
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="excel-sanitizer" class="nose" checked>
+              <span>Sanitizer</span>
+            </label>
+          </div>
+          
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="enable3BSP" class="nose" checked>
+              <span>3БСП</span>
+            </label>
+          </div>
+          
+          <div class="field checkbox-field">
+            <label>
+              <input type="checkbox" id="excel-autoopen" class="nose" checked>
+              <span>Автовідкриття</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопки дій -->
+      <div class="excel-actions">
+        <button class="btn primary" id="excel-process-btn">🚀 Розпочати обробку</button>
+        <button class="btn ghost" id="excel-cancel-btn" style="display: none;">❌ Скасувати</button>
+      </div>
+
+      <!-- Лог виконання -->
+      <div class="excel-log">
+        <h4>Лог виконання</h4>
+        <div class="log-controls">
+          <button class="btn ghost small" id="btn-clear-excel-log">Очистити</button>
+          <button class="btn ghost small" id="btn-save-excel-log">Зберегти лог</button>
+        </div>
+        <div class="log-container">
+          <pre id="excel-log-body" class="log-body"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<КІНЕЦЬ КОДУ>
+
+────────────────────────────────────────────────────────────────────────
+2) Контролер вкладки — ExcelProcessor.ts (src/ExcelProcessor.ts)
+
+Файл повністю:
+
+<ПОЧАТОК КОДУ>
+[Вміст src/ExcelProcessor.ts]
+
+(Див. нижче — вставлено повний текст файла.)
+
+```
+/**
+ * ExcelProcessor - Управління UI вкладки "Стройовка"
+ * 
+ * Функціонал: Копіювання даних Excel на основі підрозділів
+ * - Сканування папки з Excel файлами
+ * - Вибір файлу призначення
+ * - Копіювання колонок C:H за ключем з колонки B
+ * - Обробка двох аркушів: "ЗС" та "БЗ"
+ * 
+ * @class ExcelProcessor
+ */
+
+import { byId } from './helpers';
+import { SubunitMappingProcessor } from './services/SubunitMappingProcessor';
+import type { ProcessingStats } from './types/MappingTypes';
+
+export class ExcelProcessor {
+  private inputFolder: string = '';
+  private destinationFile: string = '';
+  private processor: SubunitMappingProcessor;
+  private isProcessing: boolean = false;
+
+  constructor() {
+    this.processor = new SubunitMappingProcessor();
+    this.setupEventListeners();
+    this.loadSavedSettings();
+    
+    this.logMessage('✅ Модуль обробки Excel ініціалізовано');
+    
+    // 🧪 ТЕСТОВІ ЗНАЧЕННЯ (видалити після тестування)
+    // this.inputFolder = 'D:\\TestFolder';
+    // this.destinationFile = 'D:\\TestFolder\\destination.xlsx';
+    
+    // Оновити стан кнопок після ініціалізації
+    setTimeout(() => this.updateButtonStates(), 100);
+  }
+
+  /**
+   * Налаштування слухачів подій
+   */
+  private setupEventListeners(): void {
+    // Вибір папки з Excel файлами
+    const selectFolderBtn = byId('excel-select-folder');
+    const inputFolderField = byId<HTMLInputElement>('excel-input-folder');
+    
+    selectFolderBtn?.addEventListener('click', async () => {
+      try {
+        console.log('🖱️ Натиснуто кнопку вибору папки');
+        const result = await window.api?.selectFolder?.();
+        console.log('📁 Результат вибору папки:', result);
+        if (result?.filePath) {
+          this.inputFolder = result.filePath;
+          inputFolderField!.value = result.filePath;
+          this.logMessage(`📂 Обрана папка: ${result.filePath}`);
+          await this.saveInputFolderSettings();
+          this.updateButtonStates();
+        }
+      } catch (error) {
+        this.logMessage(`❌ Помилка вибору папки: ${error}`, 'error');
+        console.error('❌ Помилка вибору папки:', error);
+      }
+    });
+
+    // Вибір файлу призначення
+    const selectDestinationBtn = byId('excel-select-destination');
+    const destinationFileField = byId<HTMLInputElement>('excel-destination-file');
+    
+    selectDestinationBtn?.addEventListener('click', async () => {
+      try {
+        console.log('🖱️ Натиснуто кнопку вибору файлу призначення');
+        const result = await window.api?.selectExcelFile?.();
+        console.log('📄 Результат вибору файлу:', result);
+        
+        if (result) {
+          this.destinationFile = result;
+          destinationFileField!.value = result;
+          this.logMessage(`💾 Обрано файл призначення: ${result}`);
+          await this.saveDestinationSettings();
+          this.updateButtonStates();
+        }
+      } catch (error) {
+        this.logMessage(`❌ Помилка вибору файлу призначення: ${error}`, 'error');
+        console.error('❌ Помилка вибору файлу:', error);
+      }
+    });
+
+    // Початок обробки
+    const startBtn = byId('excel-process-btn');
+    startBtn?.addEventListener('click', () => {
+      this.handleStartProcessing();
+    });
+
+    // Зупинка обробки
+    const stopBtn = byId('excel-cancel-btn');
+    stopBtn?.addEventListener('click', () => {
+      this.handleStopProcessing();
+    });
+
+    // Очищення логів
+    const clearLogsBtn = byId('btn-clear-excel-log');
+    clearLogsBtn?.addEventListener('click', () => {
+      this.clearLogs();
+    });
+
+    // Збереження логів
+    const saveLogsBtn = byId('btn-save-excel-log');
+    saveLogsBtn?.addEventListener('click', () => {
+      this.saveLogs();
+    });
+
+    // Збереження налаштувань
+    const rememberDestinationCheckbox = byId<HTMLInputElement>('excel-remember-destination');
+    rememberDestinationCheckbox?.addEventListener('change', () => {
+      this.saveDestinationSettings();
+    });
+
+    const sliceCheckbox = byId<HTMLInputElement>('excel-slice-check');
+    const mismatchesCheckbox = byId<HTMLInputElement>('excel-mismatches');
+    const sanitizerCheckbox = byId<HTMLInputElement>('excel-sanitizer');
+    const enable3BSPCheckbox = byId<HTMLInputElement>('enable3BSP');
+    const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+    
+    sliceCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    mismatchesCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    sanitizerCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    enable3BSPCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+    autoOpenCheckbox?.addEventListener('change', () => this.saveProcessingSettings());
+  }
+
+  /**
+   * Обробник початку процесу обробки
+   */
+  private async handleStartProcessing(): Promise<void> {
+    if (this.isProcessing) {
+      this.logMessage('⚠️ Обробка вже виконується', 'warn');
+      return;
+    }
+
+    // Валідація вхідних даних
+    if (!this.inputFolder) {
+      this.logMessage('❌ Оберіть папку з Excel файлами', 'error');
+      return;
+    }
+
+    if (!this.destinationFile) {
+      this.logMessage('❌ Оберіть файл призначення', 'error');
+      return;
+    }
+    
+    this.isProcessing = true;
+    this.updateButtonStates();
+    this.clearLogs();
+
+    try {
+      this.logMessage('🚀 Початок обробки файлів...');
+      this.logMessage(`📂 Папка: ${this.inputFolder}`);
+      this.logMessage(`💾 Призначення: ${this.destinationFile}`);
+      this.logMessage('');
+      
+      console.log('🔄 Викликаємо processor.process...');
+
+      const stats = await this.processor.process(
+        this.inputFolder,
+        this.destinationFile,
+        (percent: number, message: string) => {
+          this.updateProgress(message, percent);
+          this.logMessage(message);
+        }
+      );
+
+      this.displayStats(stats);
+      this.logMessage('');
+      this.logMessage('✅ Обробка завершена успішно!', 'success');
+      
+      // Автовідкриття файлу якщо налаштування увімкнене
+      const autoOpenCheckbox = byId<HTMLInputElement>('excel-autoopen');
+      if (autoOpenCheckbox?.checked) {
+        this.logMessage('📂 Відкриваю результат...', 'info');
+        try {
+          await window.api?.openExternal?.(this.destinationFile);
+        } catch (openError) {
+          console.error('Failed to open file:', openError);
+          this.logMessage('⚠️ Не вдалося автоматично відкрити файл', 'warn');
+        }
+      }
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Перевірка на помилку "Permission denied" або "відкритий в іншій програмі"
+      if (errorMsg.includes('Permission denied') || 
+          errorMsg.includes('відкритий в іншій програмі') ||
+          errorMsg.includes('Errno 13')) {
+        this.logMessage('❌ ФАЙЛ ЗАБЛОКОВАНИЙ!', 'error');
+        this.logMessage('', 'error');
+        this.logMessage('Файл призначення відкритий в Excel або іншій програмі.', 'error');
+        this.logMessage('', 'error');
+        this.logMessage('🔧 Закрийте файл та спробуйте ще раз.', 'error');
+        
+        // Показуємо alert для користувача
+        alert(
+          '❌ Файл заблокований!\n\n' +
+          'Файл призначення відкритий в Excel або іншій програмі.\n\n' +
+          '🔧 Закрийте файл та спробуйте ще раз.'
+        );
+      } else {
+        this.logMessage(`❌ Помилка обробки: ${errorMsg}`, 'error');
+      }
+      
+      console.error('Processing error:', error);
+    } finally {
+      this.isProcessing = false;
+      this.updateButtonStates();
+      this.resetProgress();
+    }
+  }
+
+  // ... (див. файл у репозиторії для повного вмісту: логування, збереження/завантаження налаштувань тощо)
+```
+<КІНЕЦЬ КОДУ>
+
+Примітки:
+- Зберігає/читає налаштування: excel.inputFolder, excel.rememberDestination, excel.destinationFile, excel.enableSliceCheck, excel.showMismatches, excel.enableSanitizer, enable3BSP, excel.autoOpen.
+- Автовідкриття використовує window.api.openExternal, який у Win відкриває шлях через shell.openPath.
+
+────────────────────────────────────────────────────────────────────────
+3) Сервіс обробки — SubunitMappingProcessor.ts (Python інтеграція)
+
+Ключовий метод: processWithPython
+
+<ПОЧАТОК КОДУ>
+[Фрагмент із src/services/SubunitMappingProcessor.ts]
+
+```
+  async processWithPython(
+    inputFolder: string,
+    destinationFile: string,
+    onProgress?: ProgressCallback
+  ): Promise<ProcessingStats> {
+    const startTime = Date.now();
+    
+    try {
+      // Фаза 1: Сканування папки
+      onProgress?.(PROCESSING_PHASES.SCANNING.percent, PROCESSING_PHASES.SCANNING.label);
+      const files = await this.scanFolder(inputFolder);
+      
+      console.log(`\n📁 ═══ СКАНУВАННЯ ПАПКИ ═══`);
+      console.log(`📍 Шлях: ${inputFolder}`);
+      console.log(`📊 Знайдено Excel файлів: ${files.length}`);
+      
+      if (files.length === 0) {
+        console.log(`⚠️ У папці немає файлів Excel`);
+        throw new Error('У папці не знайдено Excel файлів');
+      }
+      
+      console.log(`📋 Список файлів для обробки:`);
+      files.forEach((file, index) => {
+        console.log(`   ${index + 1}. ${file.name}`);
+      });
+      
+      // 🐍 ВИКОРИСТОВУЄМО PYTHON
+      console.log(`\n🐍 ═══ ВИКОРИСТОВУЄМО PYTHON EXCEL PROCESSOR ===\n`);
+      
+      // Отримуємо налаштування 3БСП
+      const enable3BSP = await window.api?.getSetting?.('enable3BSP', false) || false;
+      console.log(`🔧 Налаштування enable3BSP: ${enable3BSP}`);
+      
+      // Формуємо конфігурацію для Python (snake_case для Python)
+      const config: any = {
+        destination_file: destinationFile,
+        source_files: files.map(f => f.path),
+        enable_3bsp: enable3BSP,  // 🆕 Передаємо налаштування 3БСП
+        sheets: [
+          {
+            name: SHEET_NAMES.ZS,
+            key_column: COLUMNS.ZS.SUBUNIT_KEY,
+            data_columns: this.getColumnsList(COLUMNS.ZS.DATA_START, COLUMNS.ZS.DATA_END),
+            blacklist: Array.from(SUBUNIT_BLACKLIST.ZS)
+          },
+          {
+            name: SHEET_NAMES.BZ,
+            key_column: COLUMNS.BZ.SUBUNIT_KEY,
+            data_columns: this.getColumnsList(COLUMNS.BZ.DATA_START, COLUMNS.BZ.DATA_END),
+            blacklist: Array.from(SUBUNIT_BLACKLIST.BZ)
+          }
+        ]
+      };
+      
+      onProgress?.(PROCESSING_PHASES.PROCESSING.percentStart, 'Обробка через Python...');
+      
+      // 🐍 Викликаємо Python через IPC
+      if (!window.api || !window.api.invoke) {
+        throw new Error('❌ Electron API не доступний. Переконайтесь що preload.ts підключено правильно.');
+      }
+      
+      const pythonResult = await window.api.invoke('python:process-excel', config) as PythonProcessResult;
+      
+      if (!pythonResult.success) {
+        throw new Error(pythonResult.error || 'Python processing failed');
+      }
+      
+      console.log(`✅ Python обробив ${pythonResult.total_rows} рядків`);
+      
+      // ... (побудова статистики)
+  }
+```
+<КІНЕЦЬ КОДУ>
+
+────────────────────────────────────────────────────────────────────────
+4) Константи — аркуші, колонки, blacklist (src/config/constants.ts)
+
+<ПОЧАТОК КОДУ>
+[Вміст src/config/constants.ts]
+
+```
+export const SHEET_NAMES = {
+  ZS: 'ЗС',
+  BZ: 'БЗ'
+} as const;
+
+export const COLUMNS = {
+  ZS: { SUBUNIT_KEY: 'B', DATA_START: 'C', DATA_END: 'H' },
+  BZ: { SUBUNIT_KEY: 'C', DATA_START: 'D', DATA_END: 'H' }
+} as const;
+
+export const SUBUNIT_BLACKLIST = {
+  ZS: ['упр','п'],
+  BZ: []
+} as const;
+```
+<КІНЕЦЬ КОДУ>
+
+────────────────────────────────────────────────────────────────────────
+5) Типи даних (src/types/MappingTypes.ts)
+
+Ключові інтерфейси, що використовує контролер та сервіс:
+
+<ПОЧАТОК КОДУ>
+```
+export interface ProcessingStats {
+  totalFiles: number;
+  processedFiles: number;
+  failedFiles: number;
+  totalCopiedRowsZS: number;
+  totalCopiedRowsBZ: number;
+  totalSkippedRowsZS: number;
+  totalSkippedRowsBZ: number;
+  allMissingSubunits: string[];
+  processingTime: number;
+}
+```
+<КІНЕЦЬ КОДУ>
+
+────────────────────────────────────────────────────────────────────────
+6) IPC API, які використовує вкладка (electron/preload.ts)
+
+<ПОЧАТОК КОДУ>
+```
+contextBridge.exposeInMainWorld('api', {
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('os:openExternal', { url }),
+  getSetting: (key: string, fallback?: any): Promise<any> => ipcRenderer.invoke('storage:getSetting', { key, fallback }),
+  setSetting: (key: string, value: any): Promise<void> => ipcRenderer.invoke('storage:setSetting', { key, value }),
+  selectFolder: (): Promise<{ filePath: string } | undefined> => ipcRenderer.invoke('dialog:select-folder'),
+  selectExcelFile: (): Promise<string | undefined> => ipcRenderer.invoke('batch:select-excel-file'),
+  invoke: (channel: string, ...args: any[]): Promise<any> => ipcRenderer.invoke(channel, ...args),
+});
+```
+<КІНЕЦЬ КОДУ>
+
+Примітка: у services/osIntegration.ts функція openExternal побудована так, щоб відкривати як URL, так і локальні файли (для файлів використовується shell.openPath).
+
+────────────────────────────────────────────────────────────────────────
+7) Додаткові деталі реалізації
+
+- 3БСП: у Python виконується пряме копіювання C4:H231 з листа «3бСпП БЗ». Включається чекбоксом «3БСП».
+- Специфіка файлу 1241: обробляється лише аркуш БЗ, ключова колонка — C; лист ЗС у цьому файлі пропускається. Назви листів порівнюються з .strip() (ігнор пробілів).
+- LOG лист: Python створює аркуш «LOG» на першій позиції із заголовком, зведенням і таблицею операцій (тип операції, файл, лист, кількість рядків, деталі).
+- Автовідкриття: якщо увімкнене, після успішної обробки викликається window.api.openExternal(destinationFile), що відкриє файл у стандартній програмі (Excel).
+
+────────────────────────────────────────────────────────────────────────
+8) Швидкий сценарій використання
+
+1. Оберіть папку з Excel файлами.
+2. Оберіть файл призначення.
+3. Перевірте налаштування (3БСП, Автовідкриття тощо).
+4. Натисніть «Розпочати обробку».
+5. Після завершення — файл відкриється автоматично (якщо увімкнено), а у файлі буде лист «LOG» із деталями.
+
+Кінець документа.

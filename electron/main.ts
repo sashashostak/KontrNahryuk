@@ -245,6 +245,12 @@ function setupBatchProcessing() {
     }
     return false
   })
+  
+  // 🐍 Python Excel Processing
+  ipcMain.handle('python:process-excel', async (_, config) => {
+    const { PythonExcelService } = require('./services/PythonExcelService')
+    return await PythonExcelService.processExcel(config)
+  })
 
   // Вибір директорії
   ipcMain.handle('batch:select-directory', async () => {
@@ -352,6 +358,39 @@ ipcMain.handle('dialog:select-folder', async (e) => {
   })
   
   return result.canceled ? null : { filePath: result.filePaths[0] }
+})
+
+ipcMain.handle('fs:read-directory', async (_, folderPath: string) => {
+  try {
+    const files = await fs.readdir(folderPath)
+    return files.map(name => ({
+      name,
+      path: path.join(folderPath, name)
+    }))
+  } catch (error) {
+    console.error('Failed to read directory:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('fs:read-excel-file', async (_, filePath: string) => {
+  try {
+    const buffer = await fs.readFile(filePath)
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+  } catch (error) {
+    console.error('Failed to read Excel file:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('fs:write-excel-file', async (_, filePath: string, buffer: ArrayBuffer) => {
+  try {
+    const nodeBuffer = Buffer.from(buffer)
+    await fs.writeFile(filePath, nodeBuffer)
+  } catch (error) {
+    console.error('Failed to write Excel file:', error)
+    throw error
+  }
 })
 
 // Простий пошук за ключовими словами

@@ -19,6 +19,7 @@ import { ThemeService } from './ThemeService';
 interface AppSettings {
   is2BSP: boolean;
   isOrder: boolean;
+  enable3BSP: boolean;      // 🆕 Налаштування для обробки 3БСП
   autoOpen: boolean;
   showTokens: boolean;
   maxFiles: number;
@@ -72,6 +73,7 @@ export class SettingsManager {
       // Основні налаштування обробки
       const is2BSP = await window.api?.getSetting?.('is2BSP', true);
       const isOrder = await window.api?.getSetting?.('isOrder', false);
+      const enable3BSP = await window.api?.getSetting?.('enable3BSP', false);  // 🆕
       const autoOpen = await window.api?.getSetting?.('autoOpen', true);
       const showTokens = await window.api?.getSetting?.('showTokens', true);
       
@@ -104,6 +106,7 @@ export class SettingsManager {
       
       set('settings-2bsp', is2BSP);
       set('settings-order', isOrder);
+      set('enable3BSP', enable3BSP);  // 🆕
       set('settings-autoopen', autoOpen);
       set('settings-tokens', showTokens);
       set('settings-max-files', maxFiles);
@@ -149,6 +152,7 @@ export class SettingsManager {
     const settingsMap: { [key: string]: string } = {
       'settings-2bsp': 'is2BSP',
       'settings-order': 'isOrder',
+      'enable3BSP': 'enable3BSP',  // 🆕
       'settings-autoopen': 'autoOpen',
       'settings-tokens': 'showTokens',
       'settings-batch-notifications': 'batchNotifications',
@@ -306,6 +310,7 @@ export class SettingsManager {
       const defaultSettings: AppSettings = {
         is2BSP: true,
         isOrder: false,
+        enable3BSP: false,     // 🆕 За замовчуванням вимкнено
         autoOpen: true,
         showTokens: true,
         maxFiles: 100,

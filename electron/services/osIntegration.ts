@@ -46,5 +46,10 @@ export function togglePowerSaveBlocker(enable: boolean) {
 }
 
 export async function openExternal(url: string) {
-  await shell.openExternal(url)
+  // Якщо це файловий шлях (не URL), використовуємо openPath
+  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('mailto:')) {
+    await shell.openPath(url)
+  } else {
+    await shell.openExternal(url)
+  }
 }
