@@ -203,7 +203,73 @@ class UpdateService extends EventEmitter {
       // Спочатку шукаємо patch файл (пріоритет для економії трафіку)
       const currentVersion = app.getVersion()
       
-      // Шукаємо прямий патч для поточної версії
+      // Перевіряємо різницю версій
+      const versionDiff = this.getVersionDifference(currentVersion, updateInfo.latestVersion)
+      this.log(`📊 Різниця версій: ${versionDiff} (${currentVersion} → ${updateInfo.latestVersion})`)
+      
+      // Якщо різниця більше 1 версії - одразу завантажуємо portable
+      if (versionDiff > 1) {
+        this.log(`⚠️ Пропущено більше 1 версії (${versionDiff}). Рекомендується portable версія`)
+        this.log(`📦 Шукаю portable файл для оновлення...`)
+        
+        const portableAsset = release.assets?.find((asset: any) =>
+          asset.name.toLowerCase().includes('portable') && 
+          asset.name.endsWith('.zip')
+        )
+        
+        if (portableAsset) {
+          this.log(`✅ Знайдено portable файл: ${portableAsset.name}`)
+          this.log(`💾 Розмір: ${this.formatBytes(portableAsset.size)}`)
+          
+          // Завантажуємо portable
+          const downloadPath = path.join(this.updateBasePath, portableAsset.name)
+          await this.downloadWithProgress(portableAsset.browser_download_url, downloadPath)
+          
+          this.log(`✅ Файл завантажено: ${downloadPath}`)
+
+          // Розпакувати
+          this.emit('status', { message: 'Розпакування файлів...' })
+          const extractPath = path.join(this.updateBasePath, 'extracted')
+          await this.extractZip(downloadPath, extractPath)
+
+          this.log(`✅ Файли розпаковано: ${extractPath}`)
+
+          // Створити backup
+          this.emit('status', { message: 'Створення резервної копії...' })
+          await this.createBackup()
+
+          this.log(`✅ Backup створено`)
+
+          // Замінити файли
+          this.emit('status', { message: 'Оновлення файлів...' })
+          await this.replaceFiles(extractPath)
+
+          this.log(`✅ Файли оновлено`)
+
+          // Очистити тимчасові файли
+          await this.cleanupTempFiles(downloadPath, extractPath)
+
+          this.emit('status', { message: 'Оновлення завершено! Перезавантаження...' })
+          this.downloadInProgress = false
+
+          // Перезавантажити додаток
+          setTimeout(() => {
+            app.relaunch()
+            app.exit(0)
+          }, 1000)
+          
+          return {
+            success: true,
+            path: downloadPath
+          }
+        } else {
+          this.log(`❌ Portable файл не знайдено`)
+          shell.openExternal(release.html_url)
+          throw new Error('Portable версія недоступна на GitHub')
+        }
+      }
+      
+      // Шукаємо прямий патч для поточної версії (якщо різниця = 1)
       let patchAsset = release.assets?.find((asset: any) =>
         asset.name.toLowerCase().includes('patch') && 
         asset.name.includes(currentVersion) &&
@@ -701,6 +767,34 @@ exit
   // ==========================================================================
   // PRIVATE METHODS
   // ==========================================================================
+
+  /**
+   * Обчислити різницю між версіями (кількість пропущених версій)
+   * 
+   * @param {string} fromVersion - Початкова версія
+   * @param {string} toVersion - Цільова версія
+   * @returns {number} Кількість версій між ними (-1 якщо помилка)
+   */
+  private getVersionDifference(fromVersion: string, toVersion: string): number {
+    try {
+      const cleanFrom = fromVersion.replace(/^[vV]/, '').trim()
+      const cleanTo = toVersion.replace(/^[vV]/, '').trim()
+
+      const fromParts = cleanFrom.split('.').map(p => parseInt(p, 10) || 0)
+      const toParts = cleanTo.split('.').map(p => parseInt(p, 10) || 0)
+
+      // Якщо major або minor відрізняються - це велика різниця
+      if (fromParts[0] !== toParts[0] || fromParts[1] !== toParts[1]) {
+        return 999 // Велика різниця
+      }
+
+      // Різниця в patch версії
+      return Math.abs(toParts[2] - fromParts[2])
+    } catch (error) {
+      this.log(`❌ Помилка обчислення різниці версій: ${error}`)
+      return -1
+    }
+  }
 
   /**
    * Порівняти версії (semantic versioning: major.minor.patch)
