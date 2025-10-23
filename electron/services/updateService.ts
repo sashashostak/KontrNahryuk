@@ -249,6 +249,11 @@ class UpdateService extends EventEmitter {
           // Очистити тимчасові файли
           await this.cleanupTempFiles(downloadPath, extractPath)
 
+          // Очистити кеш Electron
+          this.emit('status', { message: 'Очищення кешу...' })
+          await this.clearElectronCache()
+          this.log(`✅ Кеш очищено`)
+
           this.emit('status', { message: 'Оновлення завершено! Перезавантаження...' })
           this.downloadInProgress = false
 
@@ -338,6 +343,11 @@ class UpdateService extends EventEmitter {
 
       // Крок 6: Очистити тимчасові файли
       await this.cleanupTempFiles(downloadPath, extractPath)
+
+      // Крок 6.5: Очистити кеш Electron для коректного завантаження нових файлів
+      this.emit('status', { message: 'Очищення кешу...' })
+      await this.clearElectronCache()
+      this.log(`✅ Кеш очищено`)
 
       // Крок 7: Перезапустити додаток
       this.emit('status', { message: 'Перезапуск додатку...' })
@@ -690,7 +700,39 @@ exit
       app.relaunch()
       app.exit(0)
     }
-  }  /**
+  }
+
+  /**
+   * Очистити кеш Electron для запобігання проблем з UI після оновлення
+   */
+  private async clearElectronCache(): Promise<void> {
+    try {
+      const { session } = require('electron')
+      
+      this.log('🧹 Очищення кешу Electron...')
+      
+      // Очистити всі типи кешу
+      await session.defaultSession.clearCache()
+      this.log('  ✓ Очищено cache')
+      
+      await session.defaultSession.clearStorageData({
+        storages: ['cookies', 'filesystem', 'indexdb', 'shadercache', 'websql', 'serviceworkers', 'cachestorage', 'localstorage']
+      })
+      this.log('  ✓ Очищено storage data')
+      
+      // Очистити HTTP кеш
+      await session.defaultSession.clearAuthCache()
+      this.log('  ✓ Очищено auth cache')
+      
+      this.log('✅ Кеш Electron повністю очищено')
+      
+    } catch (error) {
+      this.log(`⚠️ Помилка очищення кешу (не критично): ${error}`)
+      // Не критична помилка, продовжуємо
+    }
+  }
+
+  /**
    * Очистити тимчасові файли
    */
   private async cleanupTempFiles(zipPath: string, extractPath: string): Promise<void> {

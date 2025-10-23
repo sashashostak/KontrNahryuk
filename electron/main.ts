@@ -99,7 +99,14 @@ function createWindow(): BrowserWindow {
       }
     });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    // Додаємо версійний параметр для запобігання кешуванню після оновлення
+    const htmlPath = path.join(__dirname, '../renderer/index.html')
+    const appVersion = app.getVersion()
+    
+    // Додаємо hash версії як query параметр (не завантажується окремо, просто буст кешу)
+    mainWindow.loadFile(htmlPath, {
+      hash: appVersion.replace(/\./g, '-') // 1.5.7 → 1-5-7
+    })
   }
 
   // Додаємо можливість відкрити DevTools в продакшн режимі (F12)
@@ -313,9 +320,49 @@ function setupBatchProcessing() {
   })
 }
 
+/**
+ * Перевірити версію та очистити кеш якщо програма була оновлена
+ */
+async function checkAndClearCacheIfNeeded() {
+  try {
+    const { session } = await import('electron')
+    const currentVersion = app.getVersion()
+    
+    // Отримати збережену версію з останнього запуску
+    const lastVersion = storage?.getSetting?.('app.lastVersion', null)
+    
+    // Якщо версія змінилась - очищаємо кеш
+    if (lastVersion && lastVersion !== currentVersion) {
+      console.log(`🔄 Виявлено оновлення версії: ${lastVersion} → ${currentVersion}`)
+      console.log(`🧹 Очищення кешу для запобігання проблем з UI...`)
+      
+      try {
+        await session.defaultSession.clearCache()
+        await session.defaultSession.clearStorageData({
+          storages: ['cookies', 'filesystem', 'indexdb', 'shadercache', 'websql', 'serviceworkers', 'cachestorage', 'localstorage']
+        })
+        console.log(`✅ Кеш успішно очищено`)
+      } catch (error) {
+        console.warn(`⚠️ Помилка очищення кешу: ${error}`)
+      }
+    }
+    
+    // Зберегти поточну версію
+    if (storage?.setSetting) {
+      storage.setSetting('app.lastVersion', currentVersion)
+    }
+    
+  } catch (error) {
+    console.warn(`⚠️ Помилка перевірки версії: ${error}`)
+  }
+}
+
 app.whenReady().then(async () => {
   storage = createStorage()
   updateService = new UpdateService()
+  
+  // Перевірка версії та очищення кешу при першому запуску після оновлення
+  await checkAndClearCacheIfNeeded()
   
   setupUpdateHandlers()
   setupBatchProcessing()
