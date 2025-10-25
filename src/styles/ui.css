@@ -1,3 +1,19 @@
+/* Log styles for Dodatok 10 tab */
+.log-info {
+  color: #4da3ff;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-weight: 500;
+}
+.log-warn {
+  color: #ffb300;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-weight: 500;
+}
+.log-error {
+  color: #ff3838;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-weight: 500;
+}
 :root{
   --bg: #0f1115;
   --panel: #151922;

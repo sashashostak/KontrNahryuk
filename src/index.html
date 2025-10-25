@@ -14,6 +14,7 @@
         <nav class="nav">
           <a href="#/functions" id="nav-func">📄 Накази</a>
           <a href="#/excel" id="nav-excel">📊 Стройовка</a>
+          <a href="#/dodatok10" id="nav-dodatok10">📋 Додаток 10</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -214,7 +215,6 @@
                       <input class="input" id="excel-destination-file" placeholder="Виберіть існуючий Excel файл..." readonly>
                       <button class="btn" id="excel-select-destination">📄 Відкрити файл</button>
                     </div>
-                    <small class="hint">Дані з колонок C-H будуть скопійовані в обидва аркуші (БЗ та ЗС) за ключем з колонки B</small>
                   </label>
                   
                   <div class="field checkbox-field">
@@ -370,6 +370,146 @@
             <div class="update-info">
               <div id="update-status">Натисніть "Перевірити оновлення" для пошуку нових версій</div>
               <div id="update-details" style="display: none;"></div>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/dodatok10" class="route" hidden>
+          <div class="card">
+            <h3>📋 Додаток 10</h3>
+            <p class="subtitle">Обробка Excel файлів для Додатку 10</p>
+            
+            <div class="excel-container">
+              <!-- Вибір папки з Excel файлами -->
+              <div class="excel-card">
+                <h4>🗂️ Вибір папки з Excel файлами</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Папка з Excel файлами</span>
+                    <div class="row">
+                      <input class="input" id="dodatok10-input-folder" placeholder="Виберіть папку з Excel файлами..." readonly>
+                      <button class="btn" id="dodatok10-select-folder">📂 Вибрати папку</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Скрипт шукає файли з назвами: <code>Дод.10</code>, <code>Дод 10</code>, <code>Додаток 10</code> (дата може змінюватися)
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Файл призначення -->
+              <div class="excel-card">
+                <h4>💾 Файл призначення</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Оберіть Excel файл куди буде перенесена інформація</span>
+                    <div class="row">
+                      <input class="input" id="dodatok10-destination-file" placeholder="Виберіть існуючий Excel файл..." readonly>
+                      <button class="btn" id="dodatok10-select-destination">📄 Відкрити файл</button>
+                    </div>
+                  </label>
+                  
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-remember-destination" class="nose" checked>
+                      <span>Запам'ятати файл призначення для наступних сесій</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Налаштування обробки -->
+              <div class="excel-card">
+                <h4>⚙️ Налаштування обробки</h4>
+                <div class="form">
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-autoopen" class="nose" checked>
+                      <span>Автовідкриття</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-fnp-check" class="nose">
+                      <span>FNP</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-update-status-check" class="nose">
+                      <span>Оновити статус</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-duplicates-check" class="nose">
+                      <span>Дублі</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-stroiovka-check" class="nose">
+                      <span>Стройовка</span>
+                    </label>
+                  </div>
+
+                  <!-- Поле для вибору файлу стройовки (показується тільки якщо чекбокс увімкнено) -->
+                  <div id="dodatok10-stroiovka-file-section" style="display: none; margin-top: 12px;">
+                    <label class="field">
+                      <span class="label">Файл стройовки для перевірки</span>
+                      <div class="row">
+                        <input class="input" id="dodatok10-stroiovka-file" placeholder="Виберіть Excel файл зі стройовкою..." readonly>
+                        <button class="btn" id="dodatok10-select-stroiovka">📄 Відкрити файл</button>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-fix-rank" class="nose">
+                      <span>Виправити звання</span>
+                    </label>
+                  </div>
+
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="dodatok10-fix-position" class="nose">
+                      <span>Виправити посаду</span>
+                    </label>
+                  </div>
+
+                  <!-- Поле для вибору файлу з виправленнями (показується тільки якщо увімкнено звання або посаду) -->
+                  <div id="dodatok10-corrections-file-section" style="display: none; margin-top: 12px;">
+                    <label class="field">
+                      <span class="label">Файл Excel з виправленнями звань/посад</span>
+                      <div class="row">
+                        <input class="input" id="dodatok10-corrections-file" placeholder="Виберіть Excel файл з виправленнями..." readonly>
+                        <button class="btn" id="dodatok10-select-corrections">📄 Відкрити файл</button>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кнопки дій -->
+              <div class="excel-actions">
+                <button class="btn primary" id="dodatok10-process-btn">🚀 Розпочати обробку</button>
+                <button class="btn ghost" id="dodatok10-cancel-btn" style="display: none;">❌ Скасувати</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Лог виконання для Додатку 10 -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="log-container">
+              <div class="log-header">
+                <h4>Лог виконання</h4>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn ghost small" id="dodatok10-copy-log" title="Скопіювати логи">📋 Копіювати</button>
+                  <button class="btn ghost small" id="dodatok10-clear-log">Очистити</button>
+                </div>
+              </div>
+              <pre id="dodatok10-log-body" class="log-body"></pre>
             </div>
           </div>
         </section>

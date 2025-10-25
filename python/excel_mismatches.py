@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple, Optional, Set
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 import re
+from text_utils import normalize_text
 
 # ========= НАЛАШТУВАННЯ =========
 S1_NAME = "ЗС"   # лист 1 у цільовій книзі
@@ -235,35 +236,25 @@ class ExcelMismatchChecker:
         return index
     
     def _normalize(self, value) -> str:
-        """Нормалізація значення (як у VBA Norm)"""
-        if value is None or value == "":
-            return ""
-        
-        s = str(value)
-        
-        # NBSP -> space
-        s = s.replace('\u00A0', ' ')
-        s = s.strip()
-        
-        # Множинні пробіли -> один
-        while '  ' in s:
-            s = s.replace('  ', ' ')
-        
-        return s.upper()
+        """Нормалізація значення - використовуємо єдину функцію"""
+        # remove_spaces=False, щоб зберегти пробіли для ПІБ
+        return normalize_text(value, remove_spaces=False)
     
     def _has_ignored_token(self, normalized_text: str) -> bool:
         """
         Перевірка чи текст ТОЧНО співпадає з токеном для ігнорування
         Перевіряє ТОЧНУ відповідність, а не підрядок
         """
-        text_normalized = normalized_text.replace(' ', '').upper()
-        
+        # Нормалізуємо текст через єдину функцію (з видаленням пробілів)
+        text_normalized = normalize_text(normalized_text, remove_spaces=True)
+
         for token in IGNORE_TOKENS:
-            token_normalized = token.upper().replace(' ', '')
+            # Нормалізуємо токен через єдину функцію
+            token_normalized = normalize_text(token, remove_spaces=True)
             # ТОЧНА відповідність
             if text_normalized == token_normalized:
                 return True
-        
+
         return False
 
 

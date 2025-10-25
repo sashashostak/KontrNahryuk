@@ -16,6 +16,7 @@ from excel_sanitizer import sanitize_cells
 from excel_mismatches import check_mismatches
 from excel_slice_check import check_slices
 from excel_duplicates import check_duplicates
+from text_utils import normalize_text, normalize_list
 
 # Встановлюємо UTF-8 для stdout/stderr на Windows
 if sys.platform == 'win32':
@@ -104,75 +105,80 @@ class ExcelProcessor:
     def build_index(self, sheet_name: str, key_column: str, blacklist: List[str]) -> Dict[str, List[int]]:
         """
         Побудувати індекс підрозділів у файлі призначення
-        
+
         Returns:
             Dict з ключами підрозділів та списками рядків де вони зустрічаються
         """
         print(f"\n🔍 Сканування листа '{sheet_name}'...")
-        
+
         if sheet_name not in self.destination_wb.sheetnames:
             print(f"⚠️ Лист '{sheet_name}' не знайдено")
             return {}
-            
+
         sheet = self.destination_wb[sheet_name]
         index = {}
-        
+
         # Конвертуємо літеру колонки в номер (B=2, C=3)
         col_num = ord(key_column.upper()) - ord('A') + 1
-        
+
         print(f"   Колонка ключа: {key_column} (номер {col_num})")
-        
+
+        # Нормалізуємо blacklist один раз
+        normalized_blacklist = normalize_list(blacklist, remove_spaces=True)
+
         found_count = 0
         for row_num in range(2, sheet.max_row + 1):  # Пропускаємо заголовок
             cell = sheet.cell(row=row_num, column=col_num)
             value = cell.value
-            
+
             if value:
-                # Нормалізація ключа
-                key = str(value).strip().lower().replace(' ', '')
-                
-                # Перевірка blacklist
-                if key in blacklist:
+                # Нормалізація ключа через єдину функцію
+                key = normalize_text(value, remove_spaces=True)
+
+                # Перевірка blacklist (вже нормалізований)
+                if key in normalized_blacklist:
                     continue
-                
+
                 if key not in index:
                     index[key] = []
                     found_count += 1
-                    
+
                 index[key].append(row_num)
-        
+
         print(f"   📊 Знайдено {found_count} унікальних підрозділів")
         return index
         
-    def find_contiguous_block(self, sheet: Worksheet, key_column: str, 
+    def find_contiguous_block(self, sheet: Worksheet, key_column: str,
                              key: str, start_row: int = 2) -> Optional[Tuple[int, int]]:
         """
         Знайти контігуальний блок рядків з заданим ключем
-        
+
         Returns:
             Tuple (start_row, end_row) або None
         """
         col_num = ord(key_column.upper()) - ord('A') + 1
-        
+
         # Шукаємо перший рядок
         first_row = None
         for row_num in range(start_row, sheet.max_row + 1):
             cell_value = sheet.cell(row=row_num, column=col_num).value
             if cell_value:
-                normalized = str(cell_value).strip().lower().replace(' ', '')
+                # Використовуємо єдину функцію нормалізації
+                normalized = normalize_text(cell_value, remove_spaces=True)
                 if normalized == key:
                     first_row = row_num
                     break
-        
+
         if first_row is None:
             return None
-        
+
         # Знаходимо останній рядок блоку
         last_row = first_row
         for row_num in range(first_row + 1, sheet.max_row + 1):
             cell_value = sheet.cell(row=row_num, column=col_num).value
             if cell_value:
-                normalized = str(cell_value).strip().lower().replace(' ', '')
+                # Використовуємо єдину функцію нормалізації
+                normalized = normalize_text(cell_value, remove_spaces=True)
                 if normalized == key:
                     last_row = row_num
                 else:
@@ -180,7 +186,7 @@ class ExcelProcessor:
             else:
                 # Порожня комірка - кінець блоку
                 break
-                
+
         return (first_row, last_row)
         
     def copy_data(self, source_file: str, dest_sheet_name: str, 

@@ -11,6 +11,7 @@ Excel Slice Check - Перевірка колонок F та G
 from typing import List, Tuple, Optional
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from text_utils import normalize_text
 
 # ========= НАЛАШТУВАННЯ =========
 SOURCE_SHEET_NAME = "ЗС"    # Аркуш для перевірки
@@ -132,30 +133,23 @@ class SliceChecker:
         return max_row if max_row > 0 else 0
     
     def _normalize(self, value) -> str:
-        """Нормалізація значення"""
-        if value is None or value == "":
-            return ""
-        
-        s = str(value)
-        s = s.replace('\u00A0', ' ')  # NBSP -> space
-        s = s.strip()
-        
-        # Множинні пробіли -> один
-        while '  ' in s:
-            s = s.replace('  ', ' ')
-        
-        return s
+        """Нормалізація значення - використовуємо єдину функцію"""
+        # remove_spaces=False, щоб зберегти пробіли
+        return normalize_text(value, remove_spaces=False)
     
     def _has_any_token(self, text: str) -> bool:
         """Перевірка чи текст містить будь-який токен"""
         if not text:
             return False
-        
-        text_upper = text.upper()
+
+        # Нормалізуємо текст через єдину функцію
+        text_normalized = normalize_text(text, remove_spaces=False)
         for token in CHECK_TOKENS:
-            if token.upper() in text_upper:
+            # Нормалізуємо токен через єдину функцію
+            token_normalized = normalize_text(token, remove_spaces=False)
+            if token_normalized in text_normalized:
                 return True
-        
+
         return False
 
 

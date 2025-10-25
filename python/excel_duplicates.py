@@ -7,6 +7,7 @@ from typing import List, Dict, Tuple
 from dataclasses import dataclass
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from text_utils import normalize_text
 
 
 @dataclass
@@ -40,10 +41,9 @@ SHEETS_CONFIG = {
 
 
 def _normalize_text(text: str) -> str:
-    """Нормалізувати текст для порівняння"""
-    if not text:
-        return ""
-    return str(text).strip().lower()
+    """Нормалізувати текст для порівняння - використовуємо єдину функцію"""
+    # remove_spaces=False, щоб зберегти пробіли для ПІБ
+    return normalize_text(text, remove_spaces=False)
 
 
 def _find_duplicates_in_sheet(ws: Worksheet, col_idx: int, start_row: int = 2) -> Dict[str, List[int]]:

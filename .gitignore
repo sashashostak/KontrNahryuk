@@ -187,3 +187,29 @@ __tests__/
 # Portable builds
 *-Portable/
 KontrNahryuk-Portable/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test Excel files
+*.xlsx
+!python/requirements.txt
+
+# Documentation (temporary)
+*-REPORT.md
+*-STATUS.md
+*-SUMMARY.md
+*-DESCRIPTION.txt
+*-DOCUMENTATION.md
+UI_CACHE_*.md
+UPDATE_LOGIC_*.md
+STROIOVKA-*.md
+STROIOVKA-*.txt
+
+# Old release notes (keep only current)
+GITHUB_RELEASE_1.5.[0-6].md
+RELEASE_NOTES_1.5.[0-6].md

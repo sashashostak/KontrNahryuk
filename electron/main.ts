@@ -259,6 +259,141 @@ function setupBatchProcessing() {
     return await PythonExcelService.processExcel(config)
   })
 
+  // 📋 Додаток 10 Processing
+  ipcMain.handle('process:dodatok10', async (_, options) => {
+    try {
+      console.log('🚀 Початок обробки Додатку 10...')
+      const { spawn } = require('child_process')
+      const pythonPath = path.join(__dirname, '..', '..', 'python')
+      const scriptPath = path.join(pythonPath, 'process_dodatok10.py')
+
+      // Перевірка існування скрипту
+      try {
+        await fs.access(scriptPath)
+      } catch {
+        throw new Error(`Python скрипт не знайдено: ${scriptPath}`)
+      }
+
+      // Перевірка параметрів
+      if (!options.inputFolder) {
+        throw new Error('Не вказано папку з вихідними файлами')
+      }
+      if (!options.destinationFile) {
+        throw new Error('Не вказано цільовий файл')
+      }
+
+      // Формуємо аргументи для Python скрипту
+      const args = [
+        scriptPath,
+        '--input-folder', options.inputFolder,
+        '--destination-file', options.destinationFile
+      ]
+
+      if (options.autoOpen) {
+        args.push('--auto-open')
+      }
+
+      if (!options.ignoreFormulaCols) {
+        args.push('--no-formula-cols')
+      }
+
+      // Додаємо прапорці FNP, Дублі та Стройовка через змінні оточення
+      const envVars = { ...process.env, PYTHONIOENCODING: 'utf-8' };
+      if (options.fnpCheck) {
+        (envVars as any).PY_FNP_CHECK = '1';
+      }
+      if (options.duplicatesCheck) {
+        (envVars as any).PY_DUPLICATES_CHECK = '1';
+      }
+      if (options.stroiovkaCheck) {
+        console.log(`📊 Стройовка увімкнена! Файл: ${options.stroiovkaFile}`);
+        (envVars as any).PY_STROIOVKA_CHECK = '1';
+        if (options.stroiovkaFile) {
+          (envVars as any).PY_STROIOVKA_FILE = options.stroiovkaFile;
+        }
+      }
+      if (options.fixRank) {
+        console.log(`🔧 Виправлення звань увімкнено`);
+        (envVars as any).PY_FIX_RANK = '1';
+      }
+      if (options.fixPosition) {
+        console.log(`🔧 Виправлення посад увімкнено`);
+        (envVars as any).PY_FIX_POSITION = '1';
+      }
+      if (options.updateStatus) {
+        console.log(`🔧 Оновлення статусу увімкнено`);
+        (envVars as any).PY_UPDATE_STATUS = '1';
+      }
+      if (options.correctionsFile) {
+        console.log(`📄 Файл виправлень: ${options.correctionsFile}`);
+        (envVars as any).PY_CORRECTIONS_FILE = options.correctionsFile;
+      }
+
+      console.log(`📂 Папка: ${options.inputFolder}`)
+      console.log(`💾 Цільовий файл: ${options.destinationFile}`)
+
+      // Запускаємо Python процес
+      const python = spawn('python', args, {
+        cwd: pythonPath,
+        env: envVars
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      python.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stdout += text
+        console.log(text.trim())
+      })
+
+      python.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stderr += text
+        console.error(text.trim())
+      })
+
+      // Очікуємо завершення процесу
+      return new Promise((resolve) => {
+        python.on('close', (code: number | null) => {
+          if (code === 0) {
+            console.log('✅ Додаток 10 успішно оброблено!')
+            
+            // Парсимо статистику з stdout
+            const stats: any = {}
+            const filesMatch = stdout.match(/Знайдено файлів:\s*(\d+)/)
+            const writtenMatch = stdout.match(/Записано рядків:\s*(\d+)/)
+            const unitsMatch = stdout.match(/Підрозділів знайдено:\s*(\d+)/)
+            
+            if (filesMatch) stats.filesProcessed = parseInt(filesMatch[1])
+            if (writtenMatch) stats.rowsWritten = parseInt(writtenMatch[1])
+            if (unitsMatch) stats.unitsFound = parseInt(unitsMatch[1])
+
+            resolve({
+              ok: true,
+              stats,
+              out: options.destinationFile,
+              logs: stdout.trim()
+            })
+          } else {
+            console.error(`❌ Python завершився з кодом ${code}`)
+            resolve({
+              ok: false,
+              error: stderr || `Python процес завершився з кодом ${code}`,
+              logs: stdout.trim()
+            })
+          }
+        })
+      })
+    } catch (error: any) {
+      console.error('❌ Помилка обробки Додатку 10:', error)
+      return {
+        ok: false,
+        error: error.message || String(error)
+      }
+    }
+  })
+
   // Вибір директорії
   ipcMain.handle('batch:select-directory', async () => {
     const { dialog } = require('electron')
