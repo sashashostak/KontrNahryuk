@@ -111,6 +111,7 @@ temp/
 # Editor directories and files
 .vscode/
 .idea
+.claude/
 .DS_Store
 *.suo
 *.ntvs*
@@ -132,6 +133,7 @@ ehthumbs.db
 
 # Windows specific
 Desktop.ini
+nul
 
 # Mac specific
 .DS_Store
@@ -194,6 +196,11 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+
+# Python test and debug files
+test_*.py
+debug_*.py
+test_*.bat
 
 # Test Excel files
 *.xlsx
