@@ -1,6 +1,6 @@
 # KontrNahryuk 🇺🇦
 
-[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](https://github.com/sashashostak/KontrNahryuk)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/sashashostak/KontrNahryuk)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-38.1.2-47848F.svg)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)](https://www.typescriptlang.org/)
