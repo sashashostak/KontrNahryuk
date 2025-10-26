@@ -200,6 +200,9 @@ def starts_with_upr(value) -> bool:
 def detect_target_sheet(wb: openpyxl.Workbook) -> Optional[openpyxl.worksheet.worksheet.Worksheet]:
     """Знаходить аркуш з блоком "УПР" у колонці B (рядки 10..MAX_ROW)"""
     for ws in wb.worksheets:
+        # Пропускаємо LOG аркуш при пошуку
+        if ws.title == 'LOG':
+            continue
         for row in range(10, min(ws.max_row + 1, MAX_ROW + 1)):
             cell_value = ws.cell(row, 2).value  # колонка B
             if starts_with_upr(cell_value):
@@ -1109,27 +1112,64 @@ def process_dodatok10(
                     # Діагностика: виводимо перші 5 ПІБ зі стройовки
                     sample_pibs = list(stroiovka_data.keys())[:5]
                     print(f"   Приклади ПІБ зі стройовки: {sample_pibs}")
+                    
+                    # Діагностика: виводимо унікальні статуси
+                    unique_statuses = set(stroiovka_data.values())
+                    print(f"   Унікальні статуси ({len(unique_statuses)}): {sorted(unique_statuses)}")
 
                     checked_count = 0
 
                     # Перевіряємо файл результату (рядки 10-900)
                     for check_row in range(10, MAX_ROW + 1):
-                        # Перевіряємо чи є підрозділ у колонці B
-                        unit_val = dest_ws_com.Cells(check_row, 2).Value
-                        if not unit_val or not str(unit_val).strip():
+                        try:
+                            # Перевіряємо чи є підрозділ у колонці B
+                            unit_val = dest_ws_com.Cells(check_row, 2).Value
+                            if not unit_val or not str(unit_val).strip():
+                                continue
+
+                            unit_name = str(unit_val).strip()
+
+                            # Читаємо ПІБ з колонки E та значення I
+                            pib_val = dest_ws_com.Cells(check_row, 5).Value  # Колонка E
+                            i_val = dest_ws_com.Cells(check_row, 9).Value   # Колонка I
+                            g_val = dest_ws_com.Cells(check_row, 7).Value   # Колонка G (МВ/ін)
+                            es_val = dest_ws_com.Cells(check_row, 149).Value  # Колонка ES (прапор БЗ з EU:FJ)
+                            eu_val = dest_ws_com.Cells(check_row, 151).Value  # Колонка EU (прапор ВЛК)
+                            ev_val = dest_ws_com.Cells(check_row, 152).Value  # Колонка EV (прапор Ш)
+                            ew_val = dest_ws_com.Cells(check_row, 153).Value  # Колонка EW (прапор Ш)
+                            ex_val = dest_ws_com.Cells(check_row, 154).Value  # Колонка EX (прапор В+МВ)
+                            ey_val = dest_ws_com.Cells(check_row, 155).Value  # Колонка EY (прапор В без МВ)
+                            fc_val = dest_ws_com.Cells(check_row, 159).Value  # Колонка FC (прапор ВД)
+                            fe_val = dest_ws_com.Cells(check_row, 161).Value  # Колонка FE (прапор БЗН)
+                            ff_val = dest_ws_com.Cells(check_row, 162).Value  # Колонка FF (прапор СЗЧ)
+                            fj_val = dest_ws_com.Cells(check_row, 166).Value  # Колонка FJ (прапор РБ)
+                            fn_val = dest_ws_com.Cells(check_row, 170).Value  # Колонка FN (прапор КЗВ/СП/КР/БЧ/РАО)
+                            
+                            # Читаємо всі колонки EU:FJ (151-166) для перевірки БЗ
+                            flags_eu_fn = []
+                            for col in range(151, 167):  # EU(151) до FJ(166) включно
+                                val = dest_ws_com.Cells(check_row, col).Value
+                                flags_eu_fn.append(val)
+
+                            if not pib_val or not str(pib_val).strip():
+                                continue
+
+                            # Нормалізуємо ПІБ: латинські→кирилічні, NBSP→пробіл, upper регістр
+                            pib_str = normalize_text(pib_val, remove_spaces=False, case='upper')
+                        
+                        except Exception as row_error:
+                            # Якщо помилка COM на конкретному рядку, пропускаємо його та продовжуємо
+                            print(f"   ⚠️ Помилка при читанні рядка {check_row}: {row_error}")
                             continue
 
-                        unit_name = str(unit_val).strip()
-
-                        # Читаємо ПІБ з колонки E та значення I
-                        pib_val = dest_ws_com.Cells(check_row, 5).Value  # Колонка E
-                        i_val = dest_ws_com.Cells(check_row, 9).Value  # Колонка I
-
-                        if not pib_val or not str(pib_val).strip():
-                            continue
-
-                        # Нормалізуємо ПІБ: латинські→кирилічні, NBSP→пробіл, upper регістр
-                        pib_str = normalize_text(pib_val, remove_spaces=False, case='upper')
+                        # Допоміжна функція для перевірки "== 1"
+                        def is_one(value) -> bool:
+                            if value is None:
+                                return False
+                            try:
+                                return float(value) == 1.0
+                            except (ValueError, TypeError):
+                                return str(value).strip() == '1'
 
                         # Перевіряємо чи колонка I = 1
                         try:
@@ -1158,10 +1198,481 @@ def process_dodatok10(
                                 msg = f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}» — не знайдено у стройовці"
                                 stroiovka_errors.append(msg)
 
-                    # Закриваємо Excel
-                    stroiovka_wb_com.Close(SaveChanges=False)
-                    dest_wb_com.Close(SaveChanges=False)
-                    excel.Quit()
+                        # АВТОМАТИЧНЕ ПРОСТАВЛЯННЯ ПРАПОРЦІВ НА ОСНОВІ СТАТУСУ
+                        # Якщо особа є у стройовці, автоматично проставляємо відповідні прапорці
+                        try:
+                            if pib_str in stroiovka_data:
+                                stroiovka_status = stroiovka_data[pib_str]
+                                
+                                # Відповідність статус → колонка:
+                                # ВЛК → EU (151)
+                                # Ш → EV (152) та EW (153)
+                                # В → EX (154) та EY (155)
+                                
+                                if stroiovka_status == 'ВЛК':
+                                    # Ставимо EU=1, решту скидаємо
+                                    if not is_one(eu_val):
+                                        dest_ws_com.Cells(check_row, 151).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено EU=1 (ВЛК)")
+                                    
+                                    # Скидаємо ВСІ інші прапорці: J:ES (10-149) + EV:FN (152-166)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EV:FN (152-166)
+                                    for col in range(152, 167):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус ВЛК)")
+                                
+                                elif stroiovka_status == 'Ш':
+                                    # Ставимо тільки EW=1, решту скидаємо
+                                    if not is_one(ew_val):
+                                        dest_ws_com.Cells(check_row, 153).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено EW=1 (Ш)")
+                                    
+                                    # Скидаємо ВСІ інші прапорці: J:ES (10-149) + EU,EV (151-152) + EX:FN (154-166)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU, EV (151-152)
+                                    for col in [151, 152]:
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EX:FN (154-166)
+                                    for col in range(154, 167):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус Ш)")
+                                
+                                elif stroiovka_status == 'В' or stroiovka_status.startswith("В ("):
+                                    # Статус "В" або "В ('МВ)" або "В (...)"
+                                    # Перевіряємо значення в колонці G (МВ чи ні)
+                                    g_str = str(g_val).strip().upper() if g_val else ''
+                                    is_mv = (g_str == 'МВ')
+                                    
+                                    if is_mv:
+                                        # Якщо G = МВ → ставимо EX=1
+                                        if not is_one(ex_val):
+                                            dest_ws_com.Cells(check_row, 154).Value = 1
+                                            print(f"   ✓ Рядок {check_row}: автоматично встановлено EX=1 (В+МВ)")
+                                        
+                                        # Скидаємо ВСІ інші: J:ES (10-149) + EU:EW (151-153) + EY:FN (155-166)
+                                        cleared = []
+                                        # J:ES (10-149)
+                                        for col in range(10, 150):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        # EU:EW (151-153)
+                                        for col in range(151, 154):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        # EY:FN (155-166)
+                                        for col in range(155, 167):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        if cleared:
+                                            print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус В+МВ)")
+                                    else:
+                                        # Якщо G ≠ МВ → ставимо EY=1
+                                        if not is_one(ey_val):
+                                            dest_ws_com.Cells(check_row, 155).Value = 1
+                                            print(f"   ✓ Рядок {check_row}: автоматично встановлено EY=1 (В без МВ, G={g_str or 'порожньо'})")
+                                        
+                                        # Скидаємо ВСІ інші: J:ES (10-149) + EU:EX (151-154) + EZ:FN (156-166)
+                                        cleared = []
+                                        # J:ES (10-149)
+                                        for col in range(10, 150):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        # EU:EX (151-154)
+                                        for col in range(151, 155):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        # EZ:FN (156-166)
+                                        for col in range(156, 167):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        if cleared:
+                                            print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус В без МВ)")
+                                
+                                elif stroiovka_status == 'БКБП' or stroiovka_status.startswith('БКБП'):
+                                    # Статус БКБП → ставимо EZ=1
+                                    ez_val = dest_ws_com.Cells(check_row, 156).Value
+                                    if not is_one(ez_val):
+                                        dest_ws_com.Cells(check_row, 156).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено EZ=1 (БКБП)")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:EY (151-155) + FA:FN (157-170)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:EY (151-155)
+                                    for col in range(151, 156):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # FA:FN (157-170)
+                                    for col in range(157, 171):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус БКБП, залишено тільки EZ)")
+                                
+                                elif stroiovka_status == 'ВД':
+                                    # Статус ВД → ставимо FC=1 (колонка 159)
+                                    fc_val = dest_ws_com.Cells(check_row, 159).Value
+                                    if not is_one(fc_val):
+                                        dest_ws_com.Cells(check_row, 159).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено FC=1 (ВД)")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:FB (151-158) + FD:FN (160-170)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:FB (151-158)
+                                    for col in range(151, 159):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # FD:FN (160-170)
+                                    for col in range(160, 171):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус ВД, залишено тільки FC)")
+                                
+                                elif stroiovka_status in ['КЗВ', 'СП', 'КР', 'БЧ', 'РАО', 'ДИС']:
+                                    # Статуси КЗВ, СП, КР, БЧ, РАО, ДИС → ставимо FN=1 (колонка 170)
+                                    fn_val = dest_ws_com.Cells(check_row, 170).Value
+                                    if not is_one(fn_val):
+                                        dest_ws_com.Cells(check_row, 170).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено FN=1 ({stroiovka_status})")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:FM (151-169)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:FM (151-169)
+                                    for col in range(151, 170):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус {stroiovka_status}, залишено тільки FN)")
+                                
+                                elif stroiovka_status == 'РБ':
+                                    # Статус РБ → ставимо FJ=1 (колонка 166)
+                                    fj_val = dest_ws_com.Cells(check_row, 166).Value
+                                    if not is_one(fj_val):
+                                        dest_ws_com.Cells(check_row, 166).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено FJ=1 (РБ)")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:FI (151-165) + FK:FN (167-170)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:FI (151-165)
+                                    for col in range(151, 166):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # FK:FN (167-170)
+                                    for col in range(167, 171):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус РБ, залишено тільки FJ)")
+                                
+                                elif stroiovka_status == 'БЗН':
+                                    # Статус БЗН → ставимо FE=1 (колонка 161)
+                                    fe_val = dest_ws_com.Cells(check_row, 161).Value
+                                    if not is_one(fe_val):
+                                        dest_ws_com.Cells(check_row, 161).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено FE=1 (БЗН)")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:FD (151-160) + FF:FJ (162-166)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:FD (151-160)
+                                    for col in range(151, 161):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # FF:FN (162-170)
+                                    for col in range(162, 171):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус БЗН, залишено тільки FE)")
+                                
+                                elif stroiovka_status == 'СЗЧ':
+                                    # Статус СЗЧ → ставимо FF=1 (колонка 162)
+                                    ff_val = dest_ws_com.Cells(check_row, 162).Value
+                                    if not is_one(ff_val):
+                                        dest_ws_com.Cells(check_row, 162).Value = 1
+                                        print(f"   ✓ Рядок {check_row}: автоматично встановлено FF=1 (СЗЧ)")
+                                    
+                                    # Скидаємо ВСІ інші: J:ES (10-149) + EU:FE (151-161) + FG:FJ (163-166)
+                                    cleared = []
+                                    # J:ES (10-149)
+                                    for col in range(10, 150):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # EU:FE (151-161)
+                                    for col in range(151, 162):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    # FG:FN (163-170)
+                                    for col in range(163, 171):
+                                        val = dest_ws_com.Cells(check_row, col).Value
+                                        if is_one(val):
+                                            dest_ws_com.Cells(check_row, col).Value = None
+                                            cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус СЗЧ, залишено тільки FF)")
+                                
+                                else:
+                                    # Якщо статус БЗ або інший (не ВЛК/Ш/В/БКБП/КЗВ/ВД/СП/КР/БЧ/РАО/ДИС/РБ/БЗН/СЗЧ)
+                                    if stroiovka_status == 'БЗ':
+                                        # Для БЗ:
+                                        # - Прапорці в J:ES (10-149) — це ОК, залишаємо
+                                        # - Прапорці в EU:FJ (151-166) — помилка, скидаємо і ставимо ES=1
+                                        
+                                        # Перевіряємо чи є прапорці в EU:FJ (151-166)
+                                        has_eu_fn_flags = any(is_one(val) for val in flags_eu_fn)
+                                        
+                                        if has_eu_fn_flags:
+                                            # ПОМИЛКА: є прапорці в EU:FJ → скидаємо їх, ставимо ES=1
+                                            cleared_eu_fn = []
+                                            for col in range(151, 167):  # EU:FJ
+                                                val = dest_ws_com.Cells(check_row, col).Value
+                                                if is_one(val):
+                                                    dest_ws_com.Cells(check_row, col).Value = None
+                                                    cleared_eu_fn.append(str(col))
+                                            
+                                            # Ставимо ES=1
+                                            dest_ws_com.Cells(check_row, 149).Value = 1
+                                            print(f"   ✓ Рядок {check_row}: ПОМИЛКА БЗ — скинуто {len(cleared_eu_fn)} прапорців з EU:FJ, встановлено ES=1")
+                                        else:
+                                            # Все ОК: прапорці тільки в J:ES або взагалі немає
+                                            # Нічого не робимо, залишаємо як є
+                                            pass
+                                    else:
+                                        # Інші статуси (не ВЛК/Ш/В/БКБП/КЗВ/ВД/СП/КР/БЧ/РАО/ДИС/РБ/БЗН/СЗЧ/БЗ) - скидаємо всі прапорці J:ES (10-149) + EU:FN (151-170)
+                                        cleared = []
+                                        # J:ES (10-149)
+                                        for col in range(10, 150):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                        # EU:FN (151-170)
+                                        for col in range(151, 171):
+                                            val = dest_ws_com.Cells(check_row, col).Value
+                                            if is_one(val):
+                                                dest_ws_com.Cells(check_row, col).Value = None
+                                                cleared.append(str(col))
+                                    if cleared:
+                                        print(f"   ✓ Рядок {check_row}: скинуто {len(cleared)} прапорців (статус «{stroiovka_status}» не потребує прапорців)")
+                        
+                        except Exception as flag_error:
+                            # Якщо помилка при проставлянні прапорців, логуємо та продовжуємо
+                            print(f"   ⚠️ Помилка при проставлянні прапорців для рядка {check_row}: {flag_error}")
+
+                        # Додаткове правило: якщо EU = 1, статус повинен бути «ВЛК»
+                        def ensure_status(expected: str, flag_label: str):
+                            if pib_str in stroiovka_data:
+                                stroiovka_status = stroiovka_data[pib_str]
+                                if stroiovka_status != expected:
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"Статус у стройовці: «{stroiovka_status}» (очікується «{expected}», {flag_label})"
+                                    )
+                            else:
+                                stroiovka_errors.append(
+                                    f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}» — не знайдено у стройовці "
+                                    f"(очікується статус «{expected}», {flag_label})"
+                                )
+
+                        if is_one(eu_val):
+                            ensure_status('ВЛК', 'оскільки EU=1')
+
+                        if is_one(ew_val):
+                            ensure_status('Ш', 'оскільки EW=1')
+                        
+                        if is_one(ev_val):
+                            # EV більше не використовується для Ш, тільки EW
+                            stroiovka_errors.append(
+                                f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                f"EV=1 (застаріло: для статусу Ш використовуйте тільки EW=1)"
+                            )
+
+                        # Для EX/EY перевіряємо не тільки статус В, а й відповідність колонці G
+                        if is_one(ex_val):
+                            # EX=1 → статус В + G=МВ
+                            g_str = str(g_val).strip().upper() if g_val else ''
+                            if pib_str in stroiovka_data:
+                                stroiovka_status = stroiovka_data[pib_str]
+                                # Перевіряємо чи статус починається з "В" (може бути "В" або "В ('МВ)" тощо)
+                                if stroiovka_status != 'В' and not stroiovka_status.startswith("В ("):
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"Статус у стройовці: «{stroiovka_status}» (очікується «В», оскільки EX=1)"
+                                    )
+                                elif g_str != 'МВ':
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"G=«{g_str}» (очікується «МВ» для EX=1, інакше використовуйте EY)"
+                                    )
+                            else:
+                                stroiovka_errors.append(
+                                    f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}» — не знайдено у стройовці "
+                                    f"(очікується статус «В», оскільки EX=1)"
+                                )
+
+                        if is_one(ey_val):
+                            # EY=1 → статус В + G≠МВ
+                            g_str = str(g_val).strip().upper() if g_val else ''
+                            if pib_str in stroiovka_data:
+                                stroiovka_status = stroiovka_data[pib_str]
+                                # Перевіряємо чи статус починається з "В" (може бути "В" або "В ('МВ)" тощо)
+                                if stroiovka_status != 'В' and not stroiovka_status.startswith("В ("):
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"Статус у стройовці: «{stroiovka_status}» (очікується «В», оскільки EY=1)"
+                                    )
+                                elif g_str == 'МВ':
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"G=«МВ» (для МВ використовуйте EX=1 замість EY)"
+                                    )
+                            else:
+                                stroiovka_errors.append(
+                                    f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}» — не знайдено у стройовці "
+                                    f"(очікується статус «В», оскільки EY=1)"
+                                )
+
+                        if is_one(fc_val):
+                            # FC=1 → статус ВД
+                            ensure_status('ВД', 'оскільки FC=1')
+
+                        if is_one(fe_val):
+                            # FE=1 → статус БЗН
+                            ensure_status('БЗН', 'оскільки FE=1')
+
+                        if is_one(ff_val):
+                            # FF=1 → статус СЗЧ
+                            ensure_status('СЗЧ', 'оскільки FF=1')
+
+                        if is_one(fj_val):
+                            # FJ=1 → статус РБ
+                            ensure_status('РБ', 'оскільки FJ=1')
+
+                        if is_one(fn_val):
+                            # FN=1 → статуси КЗВ/СП/КР/БЧ/РАО/ДИС
+                            if pib_str in stroiovka_data:
+                                stroiovka_status = stroiovka_data[pib_str]
+                                if stroiovka_status not in ['КЗВ', 'СП', 'КР', 'БЧ', 'РАО', 'ДИС']:
+                                    stroiovka_errors.append(
+                                        f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}», "
+                                        f"Статус у стройовці: «{stroiovka_status}» (очікується один з КЗВ/СП/КР/БЧ/РАО/ДИС, оскільки FN=1)"
+                                    )
+                            else:
+                                stroiovka_errors.append(
+                                    f"Рядок {check_row} — Підрозділ: «{unit_name}», ПІБ: «{pib_str}» — не знайдено у стройовці "
+                                    f"(очікується статус КЗВ/СП/КР/БЧ/РАО/ДИС, оскільки FN=1)"
+                                )
+
+                    # Закриваємо Excel (зберігаємо зміни у результуючому файлі)
+                    try:
+                        stroiovka_wb_com.Close(SaveChanges=False)
+                    except Exception as e:
+                        print(f"   ⚠️ Помилка при закритті файлу стройовки: {e}")
+                    
+                    try:
+                        # ВАЖЛИВО: Явно зберігаємо файл перед закриттям
+                        dest_wb_com.Save()
+                        print(f"   💾 Файл збережено з автоматично проставленими прапорцями")
+                        dest_wb_com.Close(SaveChanges=False)  # Вже збережено вище
+                    except Exception as e:
+                        print(f"   ⚠️ Помилка при збереженні/закритті результуючого файлу: {e}")
+                        # Спробуємо закрити без збереження
+                        try:
+                            dest_wb_com.Close(SaveChanges=False)
+                        except:
+                            pass
+                    
+                    try:
+                        excel.Quit()
+                    except Exception as e:
+                        print(f"   ⚠️ Помилка при закритті Excel: {e}")
 
                     print(f"   Перевірено рядків: {checked_count}, знайдено помилок: {len(stroiovka_errors)}")
 

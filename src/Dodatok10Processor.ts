@@ -237,6 +237,7 @@ export class Dodatok10Processor {
     
     this.isProcessing = true;
     this.updateButtonStates();
+    this.clearLog();
 
     try {
       this.logMessage('🚀 Початок обробки файлів для Додатку 10...');
@@ -384,6 +385,16 @@ export class Dodatok10Processor {
     processBtn.disabled = !canStart;
     processBtn.style.display = this.isProcessing ? 'none' : 'block';
     cancelBtn.style.display = this.isProcessing ? 'block' : 'none';
+  }
+
+  /**
+   * Очищення логу
+   */
+  private clearLog(): void {
+    const logBody = byId<HTMLPreElement>('dodatok10-log-body');
+    if (logBody) {
+      logBody.textContent = '';
+    }
   }
 
   /**
