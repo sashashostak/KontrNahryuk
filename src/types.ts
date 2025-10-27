@@ -4,7 +4,7 @@
  */
 
 // FIXED: Винесено з main.ts (рядок 1)
-export type Route = '/functions' | '/excel' | '/dodatok10' | '/updates' | '/settings';
+export type Route = '/functions' | '/excel' | '/dodatok10' | '/shtat-slice' | '/zbd' | '/updates' | '/settings';
 
 // FIXED: Винесено з main.ts (рядок 1568)
 export type Mode = 'БЗ' | 'ЗС' | 'Обидва';

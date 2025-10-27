@@ -15,6 +15,8 @@
           <a href="#/functions" id="nav-func">📄 Накази</a>
           <a href="#/excel" id="nav-excel">📊 Стройовка</a>
           <a href="#/dodatok10" id="nav-dodatok10">📋 Додаток 10</a>
+          <a href="#/shtat-slice" id="nav-shtat-slice">🔪 Штат_Slice</a>
+          <a href="#/zbd" id="nav-zbd">📝 ЖБД</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -510,6 +512,145 @@
                 </div>
               </div>
               <pre id="dodatok10-log-body" class="log-body"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section data-route="/zbd" class="route" hidden>
+          <div class="card">
+            <h3>📝 ЖБД (Журнал Бойових Дій)</h3>
+            <p class="subtitle">Обробка CSV файлів та створення Word документу за певною логікою</p>
+
+            <div class="excel-container">
+              <!-- Вибір CSV файлу -->
+              <div class="excel-card">
+                <h4>📄 Вибір CSV файлу</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">CSV файл для обробки</span>
+                    <div class="row">
+                      <input class="input" id="zbd-csv-file" placeholder="Виберіть CSV файл..." readonly>
+                      <button class="btn" id="zbd-select-csv">📂 Відкрити файл</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Підтримуються файли у форматі .csv
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Місце збереження результату -->
+              <div class="excel-card">
+                <h4>💾 Місце збереження</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Місце збереження результату (Word документ)</span>
+                    <div class="row">
+                      <input class="input" id="zbd-output-file" placeholder="Виберіть місце збереження результату..." readonly>
+                      <button class="btn" id="zbd-select-output">💾 Обрати місце</button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Налаштування обробки -->
+              <div class="excel-card">
+                <h4>⚙️ Налаштування обробки</h4>
+                <div class="form">
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="zbd-autoopen" class="nose" checked>
+                      <span>Автовідкриття результату</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кнопки дій -->
+              <div class="excel-actions">
+                <button class="btn primary" id="zbd-process-btn">🚀 Розпочати обробку</button>
+                <button class="btn ghost" id="zbd-cancel-btn" style="display: none;">❌ Скасувати</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Лог виконання для ЖБД -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="log-container">
+              <div class="log-header">
+                <h4>Лог виконання</h4>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn ghost small" id="zbd-copy-log" title="Скопіювати логи">📋 Копіювати</button>
+                  <button class="btn ghost small" id="zbd-clear-log">Очистити</button>
+                </div>
+              </div>
+              <pre id="zbd-log-body" class="log-body"></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Секція Штат_Slice -->
+        <section data-route="/shtat-slice" class="route" hidden>
+          <div class="card">
+            <div class="section-header">
+              <h2>🔪 Штат_Slice - Нарізка штатки для підрозділів</h2>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Вибір вхідного файлу -->
+            <div class="form">
+              <label class="field">
+                <span class="label">Вхідний Excel файл</span>
+                <div class="row">
+                  <input 
+                    type="text" 
+                    class="input" 
+                    id="shtat-slice-input-file" 
+                    placeholder="Оберіть Excel файл для обробки..." 
+                    readonly
+                  />
+                  <button class="btn" id="shtat-slice-select-file">📂 Обрати файл</button>
+                </div>
+              </label>
+
+              <label class="field">
+                <span class="label">Папка для збереження результату</span>
+                <div class="row">
+                  <input 
+                    type="text" 
+                    class="input" 
+                    id="shtat-slice-output-folder" 
+                    placeholder="Оберіть папку для збереження результатів..." 
+                    readonly
+                  />
+                  <button class="btn" id="shtat-slice-select-folder">📁 Обрати папку</button>
+                </div>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Кнопки дій -->
+            <div class="form">
+              <div class="excel-actions">
+                <button class="btn primary" id="shtat-slice-process-btn">🚀 Розпочати обробку</button>
+                <button class="btn ghost" id="shtat-slice-cancel-btn" style="display: none;">❌ Скасувати</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Лог виконання -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="log-container">
+              <div class="log-header">
+                <h4>Лог виконання</h4>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn ghost small" id="shtat-slice-copy-log" title="Скопіювати логи">📋 Копіювати</button>
+                  <button class="btn ghost small" id="shtat-slice-clear-log">Очистити</button>
+                </div>
+              </div>
+              <pre id="shtat-slice-log-body" class="log-body"></pre>
             </div>
           </div>
         </section>

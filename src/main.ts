@@ -44,6 +44,8 @@ import { SourceSelectionManager } from './SourceSelectionManager';
 import { UpdateManager } from './UpdateManager';
 import { ExcelProcessor } from './ExcelProcessor'; // Excel processing UI controller
 import { Dodatok10Processor } from './Dodatok10Processor'; // Dodatok 10 processing UI controller
+import { ZBDProcessor } from './ZBDProcessor'; // ZBD (ЖБД) processing UI controller
+import { ShtatSliceProcessor } from './ShtatSliceProcessor'; // Shtat Slice processing UI controller
 
 // Services
 import { ThemeService } from './services/ThemeService';
@@ -61,6 +63,7 @@ let sourceSelectionManager: SourceSelectionManager;
 let updateManager: UpdateManager;
 let excelProcessor: ExcelProcessor;
 let dodatok10Processor: Dodatok10Processor;
+let zbdProcessor: ZBDProcessor;
 let themeService: ThemeService;
 let settingsManager: SettingsManager;
 let navigationService: NavigationService;
@@ -157,6 +160,12 @@ async function initializeManagers(): Promise<void> {
 
     // 5. Ініціалізуємо Dodatok 10 процесор
     dodatok10Processor = new Dodatok10Processor();
+
+    // 6. Ініціалізуємо ZBD (ЖБД) процесор
+    zbdProcessor = new ZBDProcessor();
+
+    // 7. Ініціалізуємо Shtat Slice процесор
+    new ShtatSliceProcessor();
   } catch (error) {
     console.error('❌ Помилка ініціалізації менеджерів:', error);
   }
@@ -568,6 +577,7 @@ window.addEventListener('load', () => {
     update: updateManager,
     excel: excelProcessor,
     dodatok10: dodatok10Processor,
+    zbd: zbdProcessor,
     theme: themeService,
     settings: settingsManager,
     navigation: navigationService

@@ -394,6 +394,248 @@ function setupBatchProcessing() {
     }
   })
 
+  // 📝 ЖБД (Журнал Бойових Дій) Processing
+  ipcMain.handle('process:zbd', async (_, options) => {
+    try {
+      console.log('🚀 Початок обробки ЖБД...')
+      const { spawn } = require('child_process')
+      const pythonPath = path.join(__dirname, '..', '..', 'python')
+      const scriptPath = path.join(pythonPath, 'process_zbd.py')
+
+      // Перевірка існування скрипту
+      try {
+        await fs.access(scriptPath)
+      } catch {
+        throw new Error(`Python скрипт не знайдено: ${scriptPath}`)
+      }
+
+      // Перевірка параметрів
+      if (!options.csvPath) {
+        throw new Error('Не вказано CSV файл')
+      }
+      if (!options.outputPath) {
+        throw new Error('Не вказано шлях для збереження результату')
+      }
+
+      console.log(`📄 CSV файл: ${options.csvPath}`)
+      console.log(`💾 Результат: ${options.outputPath}`)
+
+      // Формуємо конфігурацію для Python скрипту
+      const config = {
+        csv_path: options.csvPath,
+        output_path: options.outputPath
+      }
+
+      // Запускаємо Python процес
+      const python = spawn('python', [scriptPath], {
+        cwd: pythonPath,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      // Відправляємо конфігурацію через stdin
+      python.stdin.write(JSON.stringify(config))
+      python.stdin.end()
+
+      python.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stdout += text
+        console.log(text.trim())
+      })
+
+      python.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stderr += text
+        console.error(text.trim())
+      })
+
+      // Очікуємо завершення процесу
+      return new Promise((resolve) => {
+        python.on('close', (code: number | null) => {
+          if (code === 0) {
+            console.log('✅ ЖБД успішно оброблено!')
+
+            // Парсимо результат з stdout
+            try {
+              const resultMatch = stdout.match(/__RESULT__(.+)__END__/s)
+              if (resultMatch) {
+                const result = JSON.parse(resultMatch[1])
+
+                if (result.success) {
+                  resolve({
+                    ok: true,
+                    stats: {
+                      rowsProcessed: result.rows_processed || 0
+                    },
+                    out: result.output_path,
+                    message: result.message,
+                    logs: stdout.trim()
+                  })
+                } else {
+                  resolve({
+                    ok: false,
+                    error: result.error || 'Невідома помилка',
+                    logs: stdout.trim()
+                  })
+                }
+              } else {
+                resolve({
+                  ok: true,
+                  out: options.outputPath,
+                  logs: stdout.trim()
+                })
+              }
+            } catch (parseError) {
+              console.error('❌ Помилка парсингу результату:', parseError)
+              resolve({
+                ok: true,
+                out: options.outputPath,
+                logs: stdout.trim()
+              })
+            }
+          } else {
+            console.error(`❌ Python завершився з кодом ${code}`)
+            resolve({
+              ok: false,
+              error: stderr || `Python процес завершився з кодом ${code}`,
+              logs: stdout.trim()
+            })
+          }
+        })
+      })
+    } catch (error: any) {
+      console.error('❌ Помилка обробки ЖБД:', error)
+      return {
+        ok: false,
+        error: error.message || String(error)
+      }
+    }
+  })
+
+  // 🔪 Shtat Slice Processing
+  ipcMain.handle('process:shtat-slice', async (_, options) => {
+    try {
+      console.log('🚀 Початок нарізки штатки...')
+      const { spawn } = require('child_process')
+      const pythonPath = path.join(__dirname, '..', '..', 'python')
+      const scriptPath = path.join(pythonPath, 'shtat_slice.py')
+
+      // Перевірка існування скрипту
+      try {
+        await fs.access(scriptPath)
+      } catch {
+        throw new Error(`Python скрипт не знайдено: ${scriptPath}`)
+      }
+
+      // Перевірка параметрів
+      if (!options.inputFile) {
+        throw new Error('Не вказано вхідний файл')
+      }
+      if (!options.outputFolder) {
+        throw new Error('Не вказано папку для збереження результатів')
+      }
+
+      console.log(`📄 Вхідний файл: ${options.inputFile}`)
+      console.log(`📁 Папка виводу: ${options.outputFolder}`)
+
+      // Формуємо конфігурацію для Python скрипту
+      const config = {
+        input_file: options.inputFile,
+        output_folder: options.outputFolder
+      }
+
+      // Запускаємо Python процес
+      const python = spawn('python', [scriptPath], {
+        cwd: pythonPath,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      // Відправляємо конфігурацію через stdin
+      python.stdin.write(JSON.stringify(config))
+      python.stdin.end()
+
+      python.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stdout += text
+        console.log(text.trim())
+      })
+
+      python.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stderr += text
+        console.error(text.trim())
+      })
+
+      // Очікуємо завершення процесу
+      return new Promise((resolve) => {
+        python.on('close', (code: number | null) => {
+          if (code === 0) {
+            console.log('✅ Штатка успішно нарізана!')
+
+            // Парсимо результат з stdout
+            try {
+              const resultMatch = stdout.match(/__RESULT__(.+)__END__/s)
+              if (resultMatch) {
+                const result = JSON.parse(resultMatch[1])
+
+                if (result.success) {
+                  resolve({
+                    ok: true,
+                    stats: {
+                      subunitsCount: result.subunits_count || 0,
+                      filesCreated: result.files_created || 0
+                    },
+                    outputFolder: result.output_folder,
+                    files: result.files || [],
+                    message: result.message,
+                    logs: stdout.trim()
+                  })
+                } else {
+                  resolve({
+                    ok: false,
+                    error: result.error || 'Невідома помилка',
+                    logs: stdout.trim()
+                  })
+                }
+              } else {
+                resolve({
+                  ok: true,
+                  outputFolder: options.outputFolder,
+                  logs: stdout.trim()
+                })
+              }
+            } catch (parseError) {
+              console.error('❌ Помилка парсингу результату:', parseError)
+              resolve({
+                ok: true,
+                outputFolder: options.outputFolder,
+                logs: stdout.trim()
+              })
+            }
+          } else {
+            console.error(`❌ Python завершився з кодом ${code}`)
+            resolve({
+              ok: false,
+              error: stderr || `Python процес завершився з кодом ${code}`,
+              logs: stdout.trim()
+            })
+          }
+        })
+      })
+    } catch (error: any) {
+      console.error('❌ Помилка нарізки штатки:', error)
+      return {
+        ok: false,
+        error: error.message || String(error)
+      }
+    }
+  })
+
   // Вибір директорії
   ipcMain.handle('batch:select-directory', async () => {
     const { dialog } = require('electron')
@@ -415,6 +657,17 @@ function setupBatchProcessing() {
       ]
     })
     return result.canceled ? null : result.filePath
+  })
+
+  // Вибір файлу з параметрами (універсальний метод)
+  ipcMain.handle('dialog:select-file', async (_, options) => {
+    const { dialog } = require('electron')
+    const result = await dialog.showOpenDialog({
+      title: options?.title || 'Оберіть файл',
+      filters: options?.filters || [{ name: 'All Files', extensions: ['*'] }],
+      properties: ['openFile']
+    })
+    return result.canceled ? null : result.filePaths[0]
   })
 
   // Вибір Excel файлу з іменами
