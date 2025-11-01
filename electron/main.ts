@@ -419,11 +419,15 @@ function setupBatchProcessing() {
 
       console.log(`📄 CSV файл: ${options.csvPath}`)
       console.log(`💾 Результат: ${options.outputPath}`)
+      if (options.configExcelPath) {
+        console.log(`⚙️ Конфігураційний Excel: ${options.configExcelPath}`)
+      }
 
       // Формуємо конфігурацію для Python скрипту
       const config = {
         csv_path: options.csvPath,
-        output_path: options.outputPath
+        output_path: options.outputPath,
+        config_excel_path: options.configExcelPath || null
       }
 
       // Запускаємо Python процес
@@ -509,6 +513,110 @@ function setupBatchProcessing() {
       console.error('❌ Помилка обробки ЖБД:', error)
       return {
         ok: false,
+        error: error.message || String(error)
+      }
+    }
+  })
+
+  // ✅ ZBD Check Processing
+  ipcMain.handle('process:zbd-check', async (_, options) => {
+    try {
+      console.log('🚀 Початок перевірки ЖБД...')
+      const { spawn } = require('child_process')
+      const pythonPath = path.join(__dirname, '..', '..', 'python')
+      const scriptPath = path.join(pythonPath, 'check_zbd.py')
+
+      // Перевірка існування скрипту
+      try {
+        await fs.access(scriptPath)
+      } catch {
+        throw new Error(`Python скрипт не знайдено: ${scriptPath}`)
+      }
+
+      // Перевірка параметрів
+      if (!options.wordFilePaths || options.wordFilePaths.length === 0) {
+        throw new Error('Не вказано Word файли ЖБД')
+      }
+      if (!options.inputFilePath) {
+        throw new Error('Не вказано Excel файл')
+      }
+      if (!options.outputFilePath) {
+        throw new Error('Не вказано шлях для збереження результату')
+      }
+
+      console.log(`� Word файлів: ${options.wordFilePaths.length}`)
+      options.wordFilePaths.forEach((file: string, index: number) => {
+        console.log(`  ${index + 1}. ${file}`)
+      })
+      console.log(`📄 Excel файл: ${options.inputFilePath}`)
+      console.log(`💾 Результат: ${options.outputFilePath}`)
+
+      // Формуємо конфігурацію для Python скрипту
+      const config = {
+        word_files: options.wordFilePaths,
+        excel_file: options.inputFilePath,
+        config_excel: options.configExcelPath || null,
+        output_file: options.outputFilePath
+      }
+
+      // Запускаємо Python процес
+      const python = spawn('python', [scriptPath], {
+        cwd: pythonPath,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      // Відправляємо конфігурацію через stdin
+      python.stdin.write(JSON.stringify(config))
+      python.stdin.end()
+
+      python.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stdout += text
+        console.log(text.trim())
+      })
+
+      python.stderr?.on('data', (data: Buffer) => {
+        const text = data.toString('utf8')
+        stderr += text
+        console.error(text.trim())
+      })
+
+      // Очікуємо завершення процесу
+      return new Promise((resolve) => {
+        python.on('close', (code: number | null) => {
+          if (code === 0) {
+            console.log('✅ Перевірка ЖБД завершена!')
+
+            // Автовідкриття результату
+            if (options.autoOpen && options.outputFilePath) {
+              shell.openPath(options.outputFilePath)
+            }
+
+            resolve({
+              success: true,
+              stats: {
+                errors: 0,
+                warnings: 0
+              },
+              logs: stdout.trim()
+            })
+          } else {
+            console.error(`❌ Python завершився з кодом ${code}`)
+            resolve({
+              success: false,
+              error: stderr || `Python процес завершився з кодом ${code}`,
+              logs: stdout.trim()
+            })
+          }
+        })
+      })
+    } catch (error: any) {
+      console.error('❌ Помилка перевірки ЖБД:', error)
+      return {
+        success: false,
         error: error.message || String(error)
       }
     }
@@ -665,9 +773,14 @@ function setupBatchProcessing() {
     const result = await dialog.showOpenDialog({
       title: options?.title || 'Оберіть файл',
       filters: options?.filters || [{ name: 'All Files', extensions: ['*'] }],
-      properties: ['openFile']
+      properties: options?.properties || ['openFile']
     })
-    return result.canceled ? null : result.filePaths[0]
+    
+    // Повертаємо об'єкт з усією інформацією
+    return {
+      canceled: result.canceled,
+      filePaths: result.filePaths || []
+    }
   })
 
   // Вибір Excel файлу з іменами
@@ -780,6 +893,22 @@ ipcMain.handle('dialog:save', async (e, { suggestName }) => {
     defaultPath: suggestName || 'result.docx',
     filters: [
       { name: 'Word Documents', extensions: ['docx'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+  
+  return result.canceled ? null : result.filePath
+})
+
+// Універсальний обробник для збереження файлів з налаштуваннями
+ipcMain.handle('dialog:save-file', async (e, options: { 
+  defaultPath?: string, 
+  filters?: Array<{ name: string, extensions: string[] }> 
+}) => {
+  const result = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender)!, {
+    defaultPath: options?.defaultPath || 'output.xlsx',
+    filters: options?.filters || [
+      { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   })

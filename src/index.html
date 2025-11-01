@@ -17,6 +17,7 @@
           <a href="#/dodatok10" id="nav-dodatok10">📋 Додаток 10</a>
           <a href="#/shtat-slice" id="nav-shtat-slice">🔪 Штат_Slice</a>
           <a href="#/zbd" id="nav-zbd">📝 ЖБД</a>
+          <a href="#/zbd-check" id="nav-zbd-check">✅ ЖБД Перевірка</a>
           <a href="#/updates" id="nav-updates">Updates</a>
           <a href="#/settings" id="nav-settings">Settings</a>
         </nav>
@@ -539,6 +540,23 @@
                 </div>
               </div>
 
+              <!-- Вибір конфігураційного Excel -->
+              <div class="excel-card">
+                <h4>⚙️ Конфігураційний файл (необов'язково)</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Excel файл з налаштуваннями</span>
+                    <div class="row">
+                      <input class="input" id="zbd-config-excel" placeholder="Виберіть Excel файл з конфігурацією (опціонально)..." readonly>
+                      <button class="btn" id="zbd-select-config-excel">📂 Відкрити файл</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Необов'язковий Excel файл з листом "РВП" для налаштування позицій, командира та місяця
+                    </small>
+                  </label>
+                </div>
+              </div>
+
               <!-- Місце збереження результату -->
               <div class="excel-card">
                 <h4>💾 Місце збереження</h4>
@@ -585,6 +603,114 @@
                 </div>
               </div>
               <pre id="zbd-log-body" class="log-body"></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Секція ЖБД Перевірка -->
+        <section data-route="/zbd-check" class="route" hidden>
+          <div class="card">
+            <h3>✅ ЖБД Перевірка</h3>
+            <p class="subtitle">Перевірка Excel файлу ЖБД на помилки та невідповідності</p>
+
+            <div class="excel-container">
+              <!-- Вибір Word файлів ЖБД -->
+              <div class="excel-card">
+                <h4>📝 Вибір Word файлів ЖБД</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Word файли ЖБД для перевірки</span>
+                    <div class="row">
+                      <input class="input" id="zbd-check-word-files" placeholder="Виберіть Word файли..." readonly>
+                      <button class="btn" id="zbd-check-select-word">📂 Відкрити файли</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Можна вибрати декілька Word файлів (.docx, .doc)
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Вибір Excel файлу для перевірки -->
+              <div class="excel-card">
+                <h4>📄 Вибір Excel файлу</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Excel файл для перевірки</span>
+                    <div class="row">
+                      <input class="input" id="zbd-check-input-file" placeholder="Виберіть Excel файл..." readonly>
+                      <button class="btn" id="zbd-check-select-input">📂 Відкрити файл</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Підтримуються файли у форматі .xlsx, .xls
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Вибір конфігураційного Excel -->
+              <div class="excel-card">
+                <h4>⚙️ Конфігураційний Excel</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Excel файл з конфігурацією</span>
+                    <div class="row">
+                      <input class="input" id="zbd-check-config-excel" placeholder="Виберіть конфігураційний Excel..." readonly>
+                      <button class="btn" id="zbd-check-select-config">📂 Відкрити файл</button>
+                    </div>
+                    <small style="opacity: 0.7; display: block; margin-top: 4px;">
+                      Файл з налаштуваннями перевірки (РВП, шапки, тощо)
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Місце збереження результату -->
+              <div class="excel-card">
+                <h4>💾 Місце збереження результату</h4>
+                <div class="form">
+                  <label class="field">
+                    <span class="label">Місце збереження результату (Excel)</span>
+                    <div class="row">
+                      <input class="input" id="zbd-check-output-file" placeholder="Виберіть місце збереження результату..." readonly>
+                      <button class="btn" id="zbd-check-select-output">💾 Обрати місце</button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Налаштування обробки -->
+              <div class="excel-card">
+                <h4>⚙️ Налаштування перевірки</h4>
+                <div class="form">
+                  <div class="field checkbox-field">
+                    <label>
+                      <input type="checkbox" id="zbd-check-autoopen" class="nose" checked>
+                      <span>Автовідкриття результату</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кнопки дій -->
+              <div class="excel-actions">
+                <button class="btn primary" id="zbd-check-process-btn">🚀 Розпочати перевірку</button>
+                <button class="btn ghost" id="zbd-check-cancel-btn" style="display: none;">❌ Скасувати</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Лог виконання -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="log-container">
+              <div class="log-header">
+                <h4>Лог виконання</h4>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn ghost small" id="zbd-check-copy-log" title="Скопіювати логи">📋 Копіювати</button>
+                  <button class="btn ghost small" id="zbd-check-clear-log">Очистити</button>
+                </div>
+              </div>
+              <pre id="zbd-check-log-body" class="log-body"></pre>
             </div>
           </div>
         </section>

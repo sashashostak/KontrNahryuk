@@ -45,6 +45,7 @@ import { UpdateManager } from './UpdateManager';
 import { ExcelProcessor } from './ExcelProcessor'; // Excel processing UI controller
 import { Dodatok10Processor } from './Dodatok10Processor'; // Dodatok 10 processing UI controller
 import { ZBDProcessor } from './ZBDProcessor'; // ZBD (ЖБД) processing UI controller
+import { ZBDCheckProcessor } from './ZBDCheckProcessor'; // ZBD Check processing UI controller
 import { ShtatSliceProcessor } from './ShtatSliceProcessor'; // Shtat Slice processing UI controller
 
 // Services
@@ -164,7 +165,10 @@ async function initializeManagers(): Promise<void> {
     // 6. Ініціалізуємо ZBD (ЖБД) процесор
     zbdProcessor = new ZBDProcessor();
 
-    // 7. Ініціалізуємо Shtat Slice процесор
+    // 7. Ініціалізуємо ZBD Check (ЖБД Перевірка) процесор
+    new ZBDCheckProcessor();
+
+    // 8. Ініціалізуємо Shtat Slice процесор
     new ShtatSliceProcessor();
   } catch (error) {
     console.error('❌ Помилка ініціалізації менеджерів:', error);

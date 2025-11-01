@@ -2,9 +2,15 @@
  * ZBDProcessor - Управління UI вкладки "ЖБД"
  *
  * Функціонал: Обробка CSV файлів з переносом інформації в Word документ
- * - Вибір CSV файлу для обробки
- * - Вибір Word шаблону (опціонально)
- * - Створення Word документа з даними з CSV
+ * - Вибір CSV файлу для обробки (табель обліку особового складу)
+ * - Вибір місця збереження результату
+ * - Створення Word документа з 31 таблицею (по одній на кожен день місяця)
+ * 
+ * Логіка роботи:
+ * - Визначає місяць та рік з назви файлу або використовує поточну дату
+ * - Створює окрему таблицю 3×5 для кожного дня (1-31)
+ * - У кожній таблиці рядок 3, колонка 1 містить дату відповідного дня
+ * - Між таблицями вставляється розрив сторінки
  *
  * @class ZBDProcessor
  */
@@ -13,6 +19,7 @@ import { byId } from './helpers';
 
 export class ZBDProcessor {
   private csvFile: string = '';
+  private configExcelFile: string = '';
   private outputFile: string = '';
   private isProcessing: boolean = false;
 
@@ -37,24 +44,55 @@ export class ZBDProcessor {
     selectCsvBtn?.addEventListener('click', async () => {
       try {
         console.log('🖱️ Натиснуто кнопку вибору CSV файлу');
-        const result = await window.api?.selectFile?.({
+        const result = await window.api?.invoke?.('dialog:select-file', {
           title: 'Оберіть CSV файл',
           filters: [
             { name: 'CSV Files', extensions: ['csv'] },
             { name: 'All Files', extensions: ['*'] }
-          ]
+          ],
+          properties: ['openFile']
         });
         console.log('📄 Результат вибору файлу:', result);
 
-        if (result) {
-          this.csvFile = result;
-          csvFileField!.value = result;
-          this.logMessage(`📄 Обрано CSV файл: ${result}`);
+        if (result && !result.canceled && result.filePaths?.length > 0) {
+          this.csvFile = result.filePaths[0];
+          csvFileField!.value = this.csvFile;
+          this.logMessage(`📄 Обрано CSV файл: ${this.csvFile}`);
           await this.saveCsvFileSettings();
           this.updateButtonStates();
         }
       } catch (error) {
         this.logMessage(`❌ Помилка вибору CSV файлу: ${error}`, 'error');
+        console.error('❌ Помилка вибору файлу:', error);
+      }
+    });
+
+    // Вибір конфігураційного Excel
+    const selectConfigExcelBtn = byId('zbd-select-config-excel');
+    const configExcelField = byId<HTMLInputElement>('zbd-config-excel');
+
+    selectConfigExcelBtn?.addEventListener('click', async () => {
+      try {
+        console.log('🖱️ Натиснуто кнопку вибору конфігураційного Excel');
+        const result = await window.api?.invoke?.('dialog:select-file', {
+          title: 'Оберіть конфігураційний Excel файл',
+          filters: [
+            { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+            { name: 'All Files', extensions: ['*'] }
+          ],
+          properties: ['openFile']
+        });
+        console.log('📄 Результат вибору файлу:', result);
+
+        if (result && !result.canceled && result.filePaths?.length > 0) {
+          this.configExcelFile = result.filePaths[0];
+          configExcelField!.value = this.configExcelFile;
+          this.logMessage(`⚙️ Обрано конфігураційний Excel: ${this.configExcelFile}`);
+          await this.saveConfigExcelSettings();
+          this.updateButtonStates();
+        }
+      } catch (error) {
+        this.logMessage(`❌ Помилка вибору конфігураційного Excel: ${error}`, 'error');
         console.error('❌ Помилка вибору файлу:', error);
       }
     });
@@ -141,6 +179,9 @@ export class ZBDProcessor {
     try {
       this.logMessage('🚀 Початок обробки CSV файлу...');
       this.logMessage(`📄 CSV файл: ${this.csvFile}`);
+      if (this.configExcelFile) {
+        this.logMessage(`⚙️ Конфігураційний Excel: ${this.configExcelFile}`);
+      }
       this.logMessage(`💾 Результат: ${this.outputFile}`);
       this.logMessage('');
 
@@ -149,6 +190,7 @@ export class ZBDProcessor {
 
       const result = await window.api?.invoke?.('process:zbd', {
         csvPath: this.csvFile,
+        configExcelPath: this.configExcelFile || null,
         outputPath: this.outputFile
       });
 
@@ -163,7 +205,7 @@ export class ZBDProcessor {
       this.logMessage('✅ CSV файл успішно оброблено!', 'success');
 
       if (result.stats) {
-        this.logMessage(`📊 Оброблено рядків: ${result.stats.rowsProcessed || 0}`, 'info');
+        this.logMessage(`📊 Створено таблиць: ${result.stats.rowsProcessed || 0}`, 'info');
       }
 
       if (result.message) {
@@ -240,13 +282,6 @@ export class ZBDProcessor {
     if (!logBody) return;
 
     const time = new Date().toLocaleTimeString();
-    const emoji = {
-      info: 'ℹ️',
-      warn: '⚠️',
-      error: '❌',
-      success: '✅'
-    }[level];
-
     const logEntry = `[${time}] ${message}\n`;
     logBody.textContent += logEntry;
     logBody.scrollTop = logBody.scrollHeight;
@@ -296,6 +331,17 @@ export class ZBDProcessor {
   }
 
   /**
+   * Збереження налаштувань конфігураційного Excel
+   */
+  private async saveConfigExcelSettings(): Promise<void> {
+    try {
+      await window.api?.setSetting?.('zbd.configExcelFile', this.configExcelFile);
+    } catch (error) {
+      console.error('Failed to save config Excel settings:', error);
+    }
+  }
+
+  /**
    * Збереження налаштувань місця збереження
    */
   private async saveOutputSettings(): Promise<void> {
@@ -331,6 +377,16 @@ export class ZBDProcessor {
         const csvFileField = byId<HTMLInputElement>('zbd-csv-file');
         if (csvFileField) {
           csvFileField.value = savedCsvFile;
+        }
+      }
+
+      // Завантаження конфігураційного Excel
+      const savedConfigExcel = await window.api?.getSetting?.('zbd.configExcelFile', '');
+      if (savedConfigExcel) {
+        this.configExcelFile = savedConfigExcel;
+        const configExcelField = byId<HTMLInputElement>('zbd-config-excel');
+        if (configExcelField) {
+          configExcelField.value = savedConfigExcel;
         }
       }
 
